@@ -4,6 +4,9 @@ namespace InvoiceManagement.Api.Tenancy;
 
 public sealed class TenantResolutionMiddleware(RequestDelegate next, ILogger<TenantResolutionMiddleware> logger)
 {
+    private static readonly Func<ILogger, Guid, string?, IDisposable?> TenantScope =
+        LoggerMessage.DefineScope<Guid, string?>("TenantId:{TenantId} UserId:{UserId}");
+
     public async Task InvokeAsync(HttpContext context, IMutableTenantContext tenantContext)
     {
         if (context.Request.Path.StartsWithSegments("/health"))
@@ -26,15 +29,12 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, ILogger<Ten
 
         tenantContext.SetTenant(tenantId);
         context.Items["TenantId"] = tenantId;
-        using (logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["TenantId"] = tenantId,
-            ["UserId"] = context.User.FindFirst("user_id")?.Value
-                ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
-        }))
-        {
-            await next(context);
-        }
+        using var scope = TenantScope(
+            logger,
+            tenantId,
+            context.User.FindFirst("user_id")?.Value
+                ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+        await next(context);
     }
 }
 

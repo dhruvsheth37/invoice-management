@@ -22,7 +22,7 @@ The implementation is intentionally a modular monolith. It preserves explicit bo
 ### Implemented
 
 - Create a draft invoice.
-- List invoices with pagination and filters.
+- List invoices with keyset pagination, opaque continuation tokens, and filters.
 - Retrieve invoice details.
 - Issue, mark paid, and void an invoice through business operations.
 - Retrieve an invoice summary/dashboard.
@@ -168,6 +168,7 @@ The temporal period columns are hidden shadow properties in EF Core:
 - Invoice totals are persisted in the same transaction as line items.
 - SQL check constraints reject negative values and prevent deactivating non-Draft invoices.
 - Invoice numbers are assigned only during issue using a tenant/fiscal-year sequence record.
+- Invoice-number allocation uses a narrow atomic SQL command inside the issue transaction, limiting sequence contention to one tenant/year key.
 - Customer legal name, tax identity, and billing address are copied to immutable invoice snapshot fields during issue.
 - A filtered unique index guarantees invoice-number uniqueness per tenant.
 - The design guarantees uniqueness, not legally gapless numbering.

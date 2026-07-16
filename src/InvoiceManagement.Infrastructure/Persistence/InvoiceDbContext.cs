@@ -1,5 +1,4 @@
 using InvoiceManagement.Application.Abstractions.Persistence;
-using InvoiceManagement.Application.Abstractions.Tenancy;
 using InvoiceManagement.Domain.Customers;
 using InvoiceManagement.Domain.Invoices;
 using InvoiceManagement.Domain.Platform;
@@ -8,12 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiceManagement.Infrastructure.Persistence;
 
-public sealed class InvoiceDbContext(
-    DbContextOptions<InvoiceDbContext> options,
-    ITenantContext tenantContext)
+public sealed class InvoiceDbContext(DbContextOptions<InvoiceDbContext> options)
     : DbContext(options), IInvoiceDbContext
 {
-    private Guid CurrentTenantId => tenantContext.TenantId;
+    private Guid CurrentTenantId { get; set; }
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
 
@@ -40,6 +37,8 @@ public sealed class InvoiceDbContext(
     IQueryable<Invoice> IInvoiceDbContext.Invoices => Invoices;
 
     public void Add(Invoice invoice) => Invoices.Add(invoice);
+
+    public void SetTenant(Guid tenantId) => CurrentTenantId = tenantId;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

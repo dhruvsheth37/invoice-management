@@ -93,5 +93,48 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .IsDescending(false, false, false, true);
         builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.Status, entity.DueDate })
             .IncludeProperties(entity => new { entity.CurrencyCode, entity.Total });
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.CreatedUtc, entity.Id })
+            .IsDescending(false, false, true, true)
+            .IncludeProperties(entity => new
+            {
+                entity.InvoiceNumber,
+                entity.Status,
+                entity.CustomerId,
+                entity.CurrencyCode,
+                entity.Total,
+                entity.IssueDate,
+                entity.DueDate,
+            });
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.DueDate, entity.Id })
+            .IncludeProperties(entity => new
+            {
+                entity.InvoiceNumber,
+                entity.Status,
+                entity.CustomerId,
+                entity.CurrencyCode,
+                entity.Total,
+                entity.IssueDate,
+                entity.CreatedUtc,
+            });
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.Total, entity.Id })
+            .IncludeProperties(entity => new
+            {
+                entity.InvoiceNumber,
+                entity.Status,
+                entity.CustomerId,
+                entity.CurrencyCode,
+                entity.IssueDate,
+                entity.DueDate,
+                entity.CreatedUtc,
+            });
+        builder.HasIndex(entity => new
+            {
+                entity.TenantId,
+                entity.IsActive,
+                entity.CurrencyCode,
+                entity.Status,
+                entity.DueDate,
+            })
+            .IncludeProperties(entity => entity.Total);
     }
 }

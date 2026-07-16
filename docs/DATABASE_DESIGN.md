@@ -266,7 +266,7 @@ Relationships:
 | `ModifiedUtc` | `datetime2(7)` | No | UTC |
 | `RowVersion` | `rowversion` | No | Concurrency |
 
-The issue transaction atomically increments the tenant/year row and formats a number such as `INV-2026-000001`. A filtered unique invoice index provides the final uniqueness guarantee.
+The issue transaction atomically increments the tenant/year row with a narrow `UPDLOCK, HOLDLOCK` allocation command and formats a number such as `INV-2026-000001`. This serializes only the relevant sequence key instead of running the whole issue workflow at `Serializable` isolation. A filtered unique invoice index provides the final uniqueness guarantee.
 
 ### 4.9 `IdempotencyRequests`
 
@@ -302,6 +302,10 @@ Unique constraint: `(TenantId, Operation, IdempotencyKey)`.
 | `Invoices` | `(TenantId, IsActive, StatusId, CreatedUtc DESC, Id DESC)` including summary columns | List and dashboard |
 | `Invoices` | `(TenantId, IsActive, CustomerId, CreatedUtc DESC)` | Customer invoice history |
 | `Invoices` | `(TenantId, IsActive, StatusId, DueDate)` including `CurrencyCode, Total` | Overdue/dashboard query |
+| `Invoices` | `(TenantId, IsActive, CreatedUtc DESC, Id DESC)` including list columns | Default keyset pagination |
+| `Invoices` | `(TenantId, IsActive, DueDate, Id)` including list columns | Due-date keyset pagination |
+| `Invoices` | `(TenantId, IsActive, Total, Id)` including list columns | Total keyset pagination |
+| `Invoices` | `(TenantId, IsActive, CurrencyCode, StatusId, DueDate)` including `Total` | SQL-side dashboard aggregation |
 | `InvoiceLineItems` | Unique filtered `(TenantId, InvoiceId, LineNumber)` | Stable active lines |
 | `InvoiceStatusHistory` | `(TenantId, InvoiceId, ChangedUtc DESC)` | Audit timeline |
 | `IdempotencyRequests` | Unique `(TenantId, Operation, IdempotencyKey)` | Request serialization/replay |

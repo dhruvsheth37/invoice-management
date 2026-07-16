@@ -29,7 +29,6 @@ public sealed record InvoiceOperationContext(
     string? IfMatch);
 
 public sealed record InvoiceListQuery(
-    int Page = 1,
     int PageSize = 25,
     InvoiceStatus? Status = null,
     Guid? CustomerId = null,
@@ -38,7 +37,9 @@ public sealed record InvoiceListQuery(
     DateOnly? DueFrom = null,
     DateOnly? DueTo = null,
     string? InvoiceNumber = null,
-    string? Sort = null);
+    string? Sort = null,
+    string? ContinuationToken = null,
+    bool IncludeTotalCount = false);
 
 public sealed record InvoiceLineDto(
     Guid Id,
@@ -101,10 +102,11 @@ public sealed record InvoiceListItemDto(
     DateOnly? DueDate,
     DateTime CreatedUtc);
 
-public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount)
-{
-    public int TotalPages => TotalCount == 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
-}
+public sealed record CursorResult<T>(
+    IReadOnlyList<T> Items,
+    int PageSize,
+    int? TotalCount,
+    string? ContinuationToken);
 
 public sealed record InvoiceAmountSummary(int Count, decimal Amount);
 

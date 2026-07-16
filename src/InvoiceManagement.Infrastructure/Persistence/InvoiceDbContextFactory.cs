@@ -16,13 +16,8 @@ public sealed class InvoiceDbContextFactory : IDesignTimeDbContextFactory<Invoic
             .UseSqlServer(connectionString, sql => sql.MigrationsAssembly(typeof(InvoiceDbContext).Assembly.FullName))
             .Options;
 
-        return new InvoiceDbContext(options, new DesignTimeTenantContext());
-    }
-
-    private sealed class DesignTimeTenantContext : ITenantContext
-    {
-        public Guid TenantId => Guid.Empty;
-
-        public bool IsResolved => false;
+        var context = new InvoiceDbContext(options);
+        context.SetTenant(Guid.Empty);
+        return context;
     }
 }

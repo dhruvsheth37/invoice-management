@@ -41,6 +41,8 @@ This ensures failures retain trace/correlation context and tenant-owned handlers
 - If absent, the current W3C trace identifier becomes the correlation identifier.
 - `X-Correlation-ID` is returned on responses, including centrally handled failures.
 - Structured JSON log scopes contain `TraceId`, `CorrelationId`, `TenantId`, and `UserId` when available.
+- Log events use source-generated `LoggerMessage` methods. Successful request-completion events are `Debug` level and health probes are excluded to avoid high-volume production log I/O.
+- Correlation and tenant scopes use cached structured scope delegates instead of allocating dictionaries per request.
 - Lifecycle history and idempotency records keep the correlation identifier for audit navigation.
 
 Correlation identifies an execution chain; it is not an idempotency key and does not prevent duplicate work.

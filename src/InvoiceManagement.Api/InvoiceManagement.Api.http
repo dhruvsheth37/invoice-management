@@ -15,7 +15,6 @@ X-Tenant-Id: {{tenantId}}
 Content-Type: application/json
 
 {
-  "page": 1,
   "pageSize": 25,
   "status": null,
   "customerId": null,
@@ -24,7 +23,9 @@ Content-Type: application/json
   "dueFrom": null,
   "dueTo": null,
   "invoiceNumber": null,
-  "sort": "-createdUtc"
+  "sort": "-createdUtc",
+  "continuationToken": null,
+  "includeTotalCount": true
 }
 
 ###
