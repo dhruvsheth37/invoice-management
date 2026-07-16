@@ -1,13 +1,16 @@
 using InvoiceManagement.Api.Tenancy;
 using InvoiceManagement.Api.Health;
+using InvoiceManagement.Api.Errors;
 using InvoiceManagement.Application.Abstractions.Tenancy;
 using InvoiceManagement.Infrastructure;
 using InvoiceManagement.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddScoped<RequestTenantContext>();
 builder.Services.AddScoped<ITenantContext>(provider => provider.GetRequiredService<RequestTenantContext>());
 builder.Services.AddScoped<IMutableTenantContext>(provider => provider.GetRequiredService<RequestTenantContext>());
@@ -18,6 +21,7 @@ builder.Services
 
 var app = builder.Build();
 
+app.UseMiddleware<DevelopmentTenantMiddleware>();
 app.MapControllers();
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
