@@ -9,13 +9,15 @@ using InvoiceManagement.Domain.Invoices;
 using InvoiceManagement.Domain.Platform;
 using InvoiceManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace InvoiceManagement.Infrastructure.Invoices;
 
 internal sealed class InvoiceService(
     InvoiceDbContext dbContext,
     ITenantContext tenantContext,
-    TimeProvider timeProvider) : IInvoiceService
+    TimeProvider timeProvider,
+    Microsoft.Extensions.Logging.ILogger<InvoiceService> logger) : IInvoiceService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -27,7 +29,7 @@ internal sealed class InvoiceService(
         ValidateContext(context, requireEtag: false);
         ValidateCreate(request);
 
-        return await ExecuteIdempotentAsync(
+        var result = await ExecuteIdempotentAsync(
             "invoice.create",
             request,
             context,
@@ -62,6 +64,8 @@ internal sealed class InvoiceService(
                 return Map(invoice);
             },
             cancellationToken);
+        logger.LogInformation("Draft invoice {InvoiceId} created", result.Id);
+        return result;
     }
 
     public async Task<PagedResult<InvoiceListItemDto>> ListAsync(InvoiceListQuery query, CancellationToken cancellationToken)
@@ -177,7 +181,7 @@ internal sealed class InvoiceService(
         IsolationLevel isolation = IsolationLevel.ReadCommitted)
     {
         ValidateContext(context, requireEtag: true);
-        return await ExecuteIdempotentAsync(operation, new { invoiceId, request }, context, 200, async now =>
+        var result = await ExecuteIdempotentAsync(operation, new { invoiceId, request }, context, 200, async now =>
         {
             var invoice = await InvoiceQuery(asTracking: true).SingleOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
                 ?? throw AppException.NotFound();
@@ -186,6 +190,8 @@ internal sealed class InvoiceService(
             await dbContext.SaveChangesAsync(cancellationToken);
             return Map(invoice);
         }, cancellationToken, isolation);
+        logger.LogInformation("Invoice command {Operation} completed for {InvoiceId}", operation, invoiceId);
+        return result;
     }
 
     private async Task<InvoiceDto> ExecuteIdempotentAsync<TRequest>(

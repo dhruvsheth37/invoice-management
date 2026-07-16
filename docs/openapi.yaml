@@ -4,7 +4,14 @@ info:
   version: 1.0.0
 servers:
   - url: http://localhost:5080
+security:
+  - bearerAuth: []
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     TenantId: { name: X-Tenant-Id, in: header, required: true, schema: { type: string, format: uuid } }
     IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 100 } }

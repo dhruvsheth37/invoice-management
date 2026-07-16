@@ -1,4 +1,5 @@
 using InvoiceManagement.Application.Invoices;
+using InvoiceManagement.Api.Tenancy;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiceManagement.Api.Controllers;
@@ -55,10 +56,14 @@ public sealed class InvoicesController(IInvoiceService service) : ControllerBase
 
     private InvoiceOperationContext OperationContext(bool requireEtag)
     {
-        var correlationId = Request.Headers["X-Correlation-ID"].FirstOrDefault() ?? HttpContext.TraceIdentifier;
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? HttpContext.TraceIdentifier;
         var idempotencyKey = Request.Headers["Idempotency-Key"].FirstOrDefault() ?? string.Empty;
         var ifMatch = requireEtag ? Request.Headers["If-Match"].FirstOrDefault() : null;
-        var actor = User.Identity?.Name ?? "development-user";
+        var actor = User.FindFirst("sub")?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(actor))
+            throw new TenantAccessException("The authenticated identity does not contain a stable subject claim.");
         return new(actor, correlationId, idempotencyKey, ifMatch);
     }
 }
