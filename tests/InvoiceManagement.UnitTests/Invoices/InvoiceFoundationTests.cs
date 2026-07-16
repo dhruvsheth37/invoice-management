@@ -53,6 +53,58 @@ public sealed class InvoiceFoundationTests
         Assert.Throws<DomainException>(() => invoice.DeactivateDraft(Now.AddMinutes(1), 1));
     }
 
+    [Fact]
+    public void Line_amounts_round_away_from_zero_to_four_decimal_places()
+    {
+        var invoice = CreateDraft();
+
+        invoice.AddLine(Guid.NewGuid(), 1, "Fractional service", 1m, 1.23455m, 0.1m, Now, 7);
+
+        var line = Assert.Single(invoice.LineItems);
+        Assert.Equal(1.2346m, line.NetAmount);
+        Assert.Equal(0.1235m, line.TaxAmount);
+        Assert.Equal(1.3581m, line.TotalAmount);
+        Assert.Equal(7, invoice.ModifiedBy);
+    }
+
+    [Theory]
+    [InlineData(0, 1, 1, "invoice.line_invalid")]
+    [InlineData(1, 1, -0.01, "invoice.line_invalid")]
+    [InlineData(1, -1, 1, "invoice.line_invalid")]
+    [InlineData(1, 1, 1.01, "invoice.line_invalid")]
+    public void Invalid_line_values_are_rejected(decimal quantity, decimal unitPrice, decimal taxRate, string errorCode)
+    {
+        var invoice = CreateDraft();
+
+        var exception = Assert.Throws<DomainException>(() =>
+            invoice.AddLine(Guid.NewGuid(), 1, "Service", quantity, unitPrice, taxRate, Now, 1));
+
+        Assert.Equal(errorCode, exception.Code);
+    }
+
+    [Fact]
+    public void Duplicate_active_line_number_is_rejected()
+    {
+        var invoice = CreateDraft();
+        invoice.AddLine(Guid.NewGuid(), 1, "First", 1, 10, 0, Now, 1);
+
+        var exception = Assert.Throws<DomainException>(() =>
+            invoice.AddLine(Guid.NewGuid(), 1, "Duplicate", 1, 20, 0, Now, 1));
+
+        Assert.Equal("invoice.line_number_duplicate", exception.Code);
+    }
+
+    [Fact]
+    public void Draft_normalizes_currency_and_optional_notes()
+    {
+        var invoice = Invoice.CreateDraft(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            " usd ", null, "  handled carefully  ", Now, 1, "correlation-1");
+
+        Assert.Equal("USD", invoice.CurrencyCode);
+        Assert.Equal("handled carefully", invoice.Notes);
+    }
+
     private static Invoice CreateDraft() =>
         Invoice.CreateDraft(
             Guid.NewGuid(),

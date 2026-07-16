@@ -45,4 +45,103 @@ public sealed class InvoiceWorkflowTests
 
         Assert.Throws<DomainException>(() => invoice.Void("invalid", Now.AddDays(1), 1, "correlation-4"));
     }
+
+    [Fact]
+    public void Invoice_without_lines_cannot_be_issued()
+    {
+        var invoice = CreateDraft();
+
+        var exception = Assert.Throws<DomainException>(() => Issue(invoice));
+
+        Assert.Equal("invoice.lines_required", exception.Code);
+    }
+
+    [Fact]
+    public void Due_date_before_issue_date_is_rejected()
+    {
+        var invoice = CreateDraftWithLine();
+
+        var exception = Assert.Throws<DomainException>(() => Issue(
+            invoice,
+            issueDate: new DateOnly(2026, 7, 16),
+            dueDate: new DateOnly(2026, 7, 15)));
+
+        Assert.Equal("invoice.due_date_invalid", exception.Code);
+    }
+
+    [Fact]
+    public void Draft_cannot_be_marked_paid()
+    {
+        var invoice = CreateDraftWithLine();
+
+        var exception = Assert.Throws<DomainException>(() =>
+            invoice.MarkPaid(new DateOnly(2026, 7, 17), "payment-1", Now, 1, "correlation-paid"));
+
+        Assert.Equal("invoice.invalid_transition", exception.Code);
+    }
+
+    [Fact]
+    public void Paid_date_before_issue_date_is_rejected()
+    {
+        var invoice = CreateDraftWithLine();
+        Issue(invoice);
+
+        var exception = Assert.Throws<DomainException>(() =>
+            invoice.MarkPaid(new DateOnly(2026, 7, 15), "payment-1", Now, 1, "correlation-paid"));
+
+        Assert.Equal("invoice.paid_date_invalid", exception.Code);
+    }
+
+    [Fact]
+    public void Lifecycle_records_actor_reason_and_correlation()
+    {
+        var invoice = CreateDraftWithLine();
+        Issue(invoice);
+        invoice.Void("  customer cancellation  ", Now.AddMinutes(1), 42, "correlation-void");
+
+        Assert.Equal(InvoiceStatus.Void, invoice.Status);
+        Assert.Equal("customer cancellation", invoice.VoidReason);
+        var history = invoice.StatusHistory.OrderBy(item => item.ChangedUtc).ToArray();
+        Assert.Equal(3, history.Length);
+        Assert.Equal(InvoiceStatus.Issued, history[^1].FromStatus);
+        Assert.Equal(InvoiceStatus.Void, history[^1].ToStatus);
+        Assert.Equal(42, history[^1].ChangedBy);
+        Assert.Equal("correlation-void", history[^1].CorrelationId);
+    }
+
+    [Fact]
+    public void Issued_invoice_cannot_be_edited()
+    {
+        var invoice = CreateDraftWithLine();
+        Issue(invoice);
+
+        var exception = Assert.Throws<DomainException>(() =>
+            invoice.AddLine(Guid.NewGuid(), 2, "Late line", 1, 25, 0, Now, 1));
+
+        Assert.Equal("invoice.not_editable", exception.Code);
+    }
+
+    private static Invoice CreateDraft() =>
+        Invoice.CreateDraft(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            "USD", new DateOnly(2026, 8, 15), null, Now, 1, "correlation-created");
+
+    private static Invoice CreateDraftWithLine()
+    {
+        var invoice = CreateDraft();
+        invoice.AddLine(Guid.NewGuid(), 1, "Freight", 1, 100, 0.18m, Now, 1);
+        return invoice;
+    }
+
+    private static void Issue(
+        Invoice invoice,
+        DateOnly? issueDate = null,
+        DateOnly? dueDate = null) =>
+        invoice.Issue(
+            "INV-2026-000001",
+            new BillToSnapshot("ACME", "Acme Ltd", null, "1 Main St", null, "Mumbai", null, null, "IN"),
+            issueDate ?? new DateOnly(2026, 7, 16),
+            dueDate ?? new DateOnly(2026, 8, 15),
+            Now,
+            1,
+            "correlation-issued");
 }
