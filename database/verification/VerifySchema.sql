@@ -95,4 +95,28 @@ BEGIN
     THROW 51003, 'Audit user columns must be required integers with a default of 1.', 1;
 END;
 
+DECLARE @RequiredInvoiceIndexes TABLE (IndexName sysname NOT NULL);
+INSERT INTO @RequiredInvoiceIndexes (IndexName)
+VALUES
+    ('IX_Invoices_TenantId_IsActive_CreatedUtc_Id'),
+    ('IX_Invoices_TenantId_IsActive_DueDate_Id'),
+    ('IX_Invoices_TenantId_IsActive_Total_Id'),
+    ('IX_Invoices_TenantId_IsActive_CurrencyCode_StatusId_DueDate');
+
+IF EXISTS
+(
+    SELECT 1
+    FROM @RequiredInvoiceIndexes AS required
+    WHERE NOT EXISTS
+    (
+        SELECT 1
+        FROM sys.indexes AS invoice_index
+        WHERE invoice_index.object_id = OBJECT_ID('dbo.Invoices')
+          AND invoice_index.name = required.IndexName
+    )
+)
+BEGIN
+    THROW 51004, 'One or more invoice query-support indexes are missing.', 1;
+END;
+
 SELECT 'Schema verification passed.' AS Result;

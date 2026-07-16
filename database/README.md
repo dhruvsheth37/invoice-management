@@ -23,7 +23,7 @@ dotnet ef migrations script \
   --output database/generated/InvoiceManagement_Idempotent.sql
 ```
 
-`scripts/V1.0.0__InitialSchema.sql` is the readable initial migration script. `scripts/V1.0.1__UseIntegerAuditUserIds.sql` migrates audit actors to required integer user IDs with a default of `1`. Released scripts are immutable; later changes receive a new version.
+`scripts/V1.0.0__InitialSchema.sql` is the readable initial migration script. `scripts/V1.0.1__UseIntegerAuditUserIds.sql` migrates audit actors to required integer user IDs with a default of `1`. `scripts/V1.0.2__AddInvoiceQueryIndexes.sql` adds the keyset-pagination and dashboard covering indexes. Released scripts are immutable; later changes receive a new version.
 
 ## Local connection
 
@@ -31,7 +31,7 @@ Copy `.env.example` to `.env`, choose a development password, start SQL Server, 
 
 ```bash
 docker compose up -d sqlserver
-export ConnectionStrings__InvoiceDatabase='Server=localhost,1433;Database=InvoiceManagement;User Id=sa;Password=...;Encrypt=True;TrustServerCertificate=True'
+export ConnectionStrings__InvoiceDatabase='Server=localhost,1433;Database=InvoiceManagement;User Id=sa;Password=sa123;Encrypt=True;TrustServerCertificate=True'
 ```
 
 Do not commit `.env`, production passwords, or access tokens.

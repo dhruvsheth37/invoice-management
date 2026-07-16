@@ -18,8 +18,8 @@ public sealed class InvoicesController(IInvoiceService service) : ControllerBase
     }
 
     [HttpPost("search")]
-    [ProducesResponseType<PagedResult<InvoiceListItemDto>>(StatusCodes.Status200OK)]
-    public Task<PagedResult<InvoiceListItemDto>> Search(
+    [ProducesResponseType<CursorResult<InvoiceListItemDto>>(StatusCodes.Status200OK)]
+    public Task<CursorResult<InvoiceListItemDto>> Search(
         [FromBody] InvoiceListQuery request,
         CancellationToken cancellationToken = default) =>
         service.ListAsync(request, cancellationToken);

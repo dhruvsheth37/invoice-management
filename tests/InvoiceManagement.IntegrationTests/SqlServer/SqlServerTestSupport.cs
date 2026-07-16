@@ -91,7 +91,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
         var options = new DbContextOptionsBuilder<InvoiceDbContext>()
             .UseSqlServer(ConnectionString)
             .Options;
-        return new InvoiceDbContext(options, new TestTenantContext(tenantId));
+        var context = new InvoiceDbContext(options);
+        context.SetTenant(tenantId);
+        return context;
     }
 
     public WebApplicationFactory<Program> CreateApi() =>
@@ -129,12 +131,6 @@ public sealed class SqlServerFixture : IAsyncLifetime
         return new TenantData(tenantId, customerId, locationId);
     }
 
-    private sealed class TestTenantContext(Guid tenantId) : InvoiceManagement.Application.Abstractions.Tenancy.ITenantContext
-    {
-        public Guid TenantId { get; } = tenantId;
-
-        public bool IsResolved => true;
-    }
 }
 
 public sealed record TenantData(Guid TenantId, Guid CustomerId, Guid LocationId);

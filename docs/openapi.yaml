@@ -39,7 +39,6 @@ components:
     InvoiceSearch:
       type: object
       properties:
-        page: { type: integer, default: 1, minimum: 1 }
         pageSize: { type: integer, default: 25, minimum: 1, maximum: 100 }
         status: { type: string, enum: [Draft, Issued, Paid, Void], nullable: true }
         customerId: { type: string, format: uuid, nullable: true }
@@ -49,6 +48,15 @@ components:
         dueTo: { type: string, format: date, nullable: true }
         invoiceNumber: { type: string, nullable: true }
         sort: { type: string, nullable: true }
+        continuationToken: { type: string, nullable: true }
+        includeTotalCount: { type: boolean, default: false }
+    InvoiceSearchResult:
+      type: object
+      properties:
+        items: { type: array, items: { type: object } }
+        pageSize: { type: integer }
+        totalCount: { type: integer, nullable: true }
+        continuationToken: { type: string, nullable: true }
     Invoice:
       type: object
       properties:
@@ -91,7 +99,11 @@ paths:
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceSearch' } } }
-      responses: { '200': { description: Paged invoice list }, '422': { $ref: '#/components/responses/Problem' } }
+      responses:
+        '200':
+          description: Cursor-paged invoice list
+          content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceSearchResult' } } }
+        '422': { $ref: '#/components/responses/Problem' }
   /api/v1/invoices/{invoiceId}:
     get:
       summary: Get invoice details

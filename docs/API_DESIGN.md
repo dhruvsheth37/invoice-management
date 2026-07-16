@@ -111,7 +111,6 @@ Content-Type: application/json
 
 ```json
 {
-  "page": 1,
   "pageSize": 25,
   "status": "Issued",
   "customerId": "73ecdfb4-fc0d-49f5-b256-b0b8450e0f3d",
@@ -120,7 +119,9 @@ Content-Type: application/json
   "dueFrom": null,
   "dueTo": null,
   "invoiceNumber": null,
-  "sort": "-createdUtc"
+  "sort": "-createdUtc",
+  "continuationToken": null,
+  "includeTotalCount": false
 }
 ```
 
@@ -138,16 +139,17 @@ Rules:
 - Maximum page size: 100.
 - Default sort: `createdUtc` descending, then `id` descending for stability.
 - Supported sorts are allow-listed.
+- Pagination uses an opaque continuation token tied to the current filters and sort; offset pagination is not used.
+- Exact total count is optional and executes only when `includeTotalCount` is `true`.
 - Query uses `AsNoTracking` and DTO projection.
 - Inactive rows are excluded.
 
 ```json
 {
   "items": [],
-  "page": 1,
   "pageSize": 25,
-  "totalCount": 0,
-  "totalPages": 0
+  "totalCount": null,
+  "continuationToken": null
 }
 ```
 

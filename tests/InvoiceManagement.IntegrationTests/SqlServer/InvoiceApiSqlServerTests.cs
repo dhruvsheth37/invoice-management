@@ -42,10 +42,25 @@ public sealed class InvoiceApiSqlServerTests(SqlServerFixture fixture)
             null,
             new InvoiceListQuery());
         searchResponse.EnsureSuccessStatusCode();
-        var page = await searchResponse.Content.ReadFromJsonAsync<PagedResult<InvoiceListItemDto>>(JsonOptions);
+        var page = await searchResponse.Content.ReadFromJsonAsync<CursorResult<InvoiceListItemDto>>(JsonOptions);
         Assert.NotNull(page);
         Assert.Single(page.Items);
         Assert.Equal(first.Id, page.Items[0].Id);
+
+        using var dashboardResponse = await SendJsonAsync(
+            client,
+            HttpMethod.Get,
+            "/api/v1/dashboard/invoice-summary?asOf=2026-08-20",
+            tenant.TenantId,
+            null,
+            null);
+        dashboardResponse.EnsureSuccessStatusCode();
+        var dashboard = await dashboardResponse.Content.ReadFromJsonAsync<InvoiceDashboardDto>(JsonOptions);
+        Assert.NotNull(dashboard);
+        var currency = Assert.Single(dashboard.CurrencyBreakdown);
+        Assert.Equal("USD", currency.CurrencyCode);
+        Assert.Equal(1, currency.Draft.Count);
+        Assert.Equal(295m, currency.Draft.Amount);
 
         using var otherTenantResponse = await SendJsonAsync(
             client,
@@ -70,7 +85,36 @@ public sealed class InvoiceApiSqlServerTests(SqlServerFixture fixture)
         var first = await CreateInvoiceAsync(client, tenant, "create-first");
         var second = await CreateInvoiceAsync(client, tenant, "create-second");
 
-        using var firstIssueResponse = await SendJsonAsync(
+        using var firstPageResponse = await SendJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/v1/invoices/search",
+            tenant.TenantId,
+            null,
+            new InvoiceListQuery(PageSize: 1, IncludeTotalCount: true));
+        firstPageResponse.EnsureSuccessStatusCode();
+        var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<CursorResult<InvoiceListItemDto>>(JsonOptions);
+        Assert.NotNull(firstPage);
+        Assert.Single(firstPage.Items);
+        Assert.Equal(2, firstPage.TotalCount);
+        Assert.NotNull(firstPage.ContinuationToken);
+
+        using var secondPageResponse = await SendJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/v1/invoices/search",
+            tenant.TenantId,
+            null,
+            new InvoiceListQuery(PageSize: 1, ContinuationToken: firstPage.ContinuationToken));
+        secondPageResponse.EnsureSuccessStatusCode();
+        var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<CursorResult<InvoiceListItemDto>>(JsonOptions);
+        Assert.NotNull(secondPage);
+        Assert.Single(secondPage.Items);
+        Assert.NotEqual(firstPage.Items[0].Id, secondPage.Items[0].Id);
+        Assert.Null(secondPage.TotalCount);
+        Assert.Null(secondPage.ContinuationToken);
+
+        var firstIssueTask = SendJsonAsync(
             client,
             HttpMethod.Post,
             $"/api/v1/invoices/{first.Id}/issue",
@@ -78,8 +122,22 @@ public sealed class InvoiceApiSqlServerTests(SqlServerFixture fixture)
             "issue-first",
             new IssueInvoiceRequest(new DateOnly(2026, 7, 16), new DateOnly(2026, 8, 15)),
             first.ETag);
+        var secondIssueTask = SendJsonAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/v1/invoices/{second.Id}/issue",
+            tenant.TenantId,
+            "issue-second",
+            new IssueInvoiceRequest(new DateOnly(2026, 7, 16), new DateOnly(2026, 8, 15)),
+            second.ETag);
+        await Task.WhenAll(firstIssueTask, secondIssueTask);
+
+        using var firstIssueResponse = await firstIssueTask;
+        using var secondIssueResponse = await secondIssueTask;
         firstIssueResponse.EnsureSuccessStatusCode();
+        secondIssueResponse.EnsureSuccessStatusCode();
         var firstIssued = await ReadInvoiceAsync(firstIssueResponse);
+        var secondIssued = await ReadInvoiceAsync(secondIssueResponse);
 
         using var staleResponse = await SendJsonAsync(
             client,
@@ -91,19 +149,9 @@ public sealed class InvoiceApiSqlServerTests(SqlServerFixture fixture)
             first.ETag);
         Assert.Equal(HttpStatusCode.Conflict, staleResponse.StatusCode);
 
-        using var secondIssueResponse = await SendJsonAsync(
-            client,
-            HttpMethod.Post,
-            $"/api/v1/invoices/{second.Id}/issue",
-            tenant.TenantId,
-            "issue-second",
-            new IssueInvoiceRequest(new DateOnly(2026, 7, 16), new DateOnly(2026, 8, 15)),
-            second.ETag);
-        secondIssueResponse.EnsureSuccessStatusCode();
-        var secondIssued = await ReadInvoiceAsync(secondIssueResponse);
-
-        Assert.Equal("INV-2026-000001", firstIssued.InvoiceNumber);
-        Assert.Equal("INV-2026-000002", secondIssued.InvoiceNumber);
+        Assert.Equal(
+            ["INV-2026-000001", "INV-2026-000002"],
+            new[] { firstIssued.InvoiceNumber, secondIssued.InvoiceNumber }.Order(StringComparer.Ordinal));
         Assert.Equal(InvoiceStatus.Issued, firstIssued.Status);
         Assert.NotEqual(first.ETag, firstIssued.ETag);
     }

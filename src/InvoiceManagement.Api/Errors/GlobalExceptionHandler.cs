@@ -8,17 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiceManagement.Api.Errors;
 
-public sealed class GlobalExceptionHandler(
+public sealed partial class GlobalExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
-    private static readonly Action<ILogger, object?, string?, Exception?> UnexpectedError =
-        LoggerMessage.Define<object?, string?>(LogLevel.Error, new EventId(3001, nameof(UnexpectedError)),
-            "Unhandled request exception for tenant {TenantId} and user {UserId}");
-    private static readonly Action<ILogger, string, object?, string?, Exception?> RequestRejected =
-        LoggerMessage.Define<string, object?, string?>(LogLevel.Warning, new EventId(3002, nameof(RequestRejected)),
-            "Request rejected with {ErrorCode} for tenant {TenantId} and user {UserId}");
-
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
         var (status, code, title, detail) = exception switch
@@ -32,9 +25,9 @@ public sealed class GlobalExceptionHandler(
         };
 
         if (status >= 500)
-            UnexpectedError(logger, httpContext.Items["TenantId"], httpContext.User.FindFirst("user_id")?.Value, exception);
+            LogUnexpectedError(logger, httpContext.Items["TenantId"], httpContext.User.FindFirst("user_id")?.Value, exception);
         else
-            RequestRejected(logger, code, httpContext.Items["TenantId"], httpContext.User.FindFirst("user_id")?.Value, exception);
+            LogRequestRejected(logger, code, httpContext.Items["TenantId"], httpContext.User.FindFirst("user_id")?.Value, exception);
 
         httpContext.Response.StatusCode = status;
         var problem = new ProblemDetails
@@ -58,4 +51,25 @@ public sealed class GlobalExceptionHandler(
             Exception = exception,
         });
     }
+
+    [LoggerMessage(
+        EventId = 3001,
+        Level = LogLevel.Error,
+        Message = "Unhandled request exception for tenant {TenantId} and user {UserId}")]
+    private static partial void LogUnexpectedError(
+        ILogger logger,
+        object? tenantId,
+        string? userId,
+        Exception exception);
+
+    [LoggerMessage(
+        EventId = 3002,
+        Level = LogLevel.Warning,
+        Message = "Request rejected with {ErrorCode} for tenant {TenantId} and user {UserId}")]
+    private static partial void LogRequestRejected(
+        ILogger logger,
+        string errorCode,
+        object? tenantId,
+        string? userId,
+        Exception exception);
 }

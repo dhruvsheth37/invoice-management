@@ -13,21 +13,14 @@ using Microsoft.Extensions.Logging;
 
 namespace InvoiceManagement.Infrastructure.Invoices;
 
-internal sealed class InvoiceService(
+internal sealed partial class InvoiceService(
     InvoiceDbContext dbContext,
     ITenantContext tenantContext,
+    InvoiceNumberAllocator invoiceNumberAllocator,
     TimeProvider timeProvider,
-    Microsoft.Extensions.Logging.ILogger<InvoiceService> logger) : IInvoiceService
+    ILogger<InvoiceService> logger) : IInvoiceService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly Action<ILogger, Guid, Exception?> DraftCreated = LoggerMessage.Define<Guid>(
-        LogLevel.Information,
-        new EventId(1001, nameof(DraftCreated)),
-        "Draft invoice {InvoiceId} created");
-    private static readonly Action<ILogger, string, Guid, Exception?> CommandCompleted = LoggerMessage.Define<string, Guid>(
-        LogLevel.Information,
-        new EventId(1002, nameof(CommandCompleted)),
-        "Invoice command {Operation} completed for {InvoiceId}");
 
     public async Task<InvoiceDto> CreateAsync(
         CreateInvoiceRequest request,
@@ -72,15 +65,15 @@ internal sealed class InvoiceService(
                 return Map(invoice);
             },
             cancellationToken);
-        DraftCreated(logger, result.Id, null);
+        LogDraftCreated(logger, result.Id);
         return result;
     }
 
-    public async Task<PagedResult<InvoiceListItemDto>> ListAsync(InvoiceListQuery query, CancellationToken cancellationToken)
+    public async Task<CursorResult<InvoiceListItemDto>> ListAsync(InvoiceListQuery query, CancellationToken cancellationToken)
     {
-        if (query.Page < 1 || query.PageSize is < 1 or > 100)
+        if (query.PageSize is < 1 or > 100)
         {
-            throw AppException.Validation("invoice.pagination_invalid", "Page must be positive and pageSize must be between 1 and 100.");
+            throw AppException.Validation("invoice.pagination_invalid", "PageSize must be between 1 and 100.");
         }
 
         var invoices = dbContext.Invoices.AsNoTracking().AsQueryable();
@@ -92,24 +85,29 @@ internal sealed class InvoiceService(
         if (query.DueTo is not null) invoices = invoices.Where(x => x.DueDate <= query.DueTo);
         if (!string.IsNullOrWhiteSpace(query.InvoiceNumber)) invoices = invoices.Where(x => x.InvoiceNumber == query.InvoiceNumber.Trim());
 
-        invoices = query.Sort?.ToLowerInvariant() switch
-        {
-            "createdutc" => invoices.OrderBy(x => x.CreatedUtc).ThenBy(x => x.Id),
-            "duedate" => invoices.OrderBy(x => x.DueDate).ThenBy(x => x.Id),
-            "-duedate" => invoices.OrderByDescending(x => x.DueDate).ThenByDescending(x => x.Id),
-            "total" => invoices.OrderBy(x => x.Total).ThenBy(x => x.Id),
-            "-total" => invoices.OrderByDescending(x => x.Total).ThenByDescending(x => x.Id),
-            null or "" or "-createdutc" => invoices.OrderByDescending(x => x.CreatedUtc).ThenByDescending(x => x.Id),
-            _ => throw AppException.Validation("invoice.sort_invalid", "The requested sort is not supported."),
-        };
+        var sort = NormalizeSort(query.Sort);
+        int? totalCount = query.IncludeTotalCount
+            ? await invoices.CountAsync(cancellationToken)
+            : null;
+        var cursor = DecodeCursor(query, sort);
+        invoices = ApplyCursor(invoices, cursor, sort);
+        invoices = ApplyOrdering(invoices, sort);
 
-        var totalCount = await invoices.CountAsync(cancellationToken);
-        var items = await invoices.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
+        var items = await invoices.Take(query.PageSize + 1)
             .Select(x => new InvoiceListItemDto(x.Id, x.InvoiceNumber, x.Status, x.CustomerId, x.CurrencyCode,
                 x.Total, x.IssueDate, x.DueDate, x.CreatedUtc))
             .ToListAsync(cancellationToken);
 
-        return new(items, query.Page, query.PageSize, totalCount);
+        var hasMore = items.Count > query.PageSize;
+        if (hasMore)
+        {
+            items.RemoveAt(items.Count - 1);
+        }
+
+        var continuationToken = hasMore && items.Count > 0
+            ? EncodeCursor(query, sort, items[^1])
+            : null;
+        return new(items, query.PageSize, totalCount, continuationToken);
     }
 
     public async Task<InvoiceDto?> GetAsync(Guid invoiceId, CancellationToken cancellationToken)
@@ -129,20 +127,12 @@ internal sealed class InvoiceService(
 
             var issueDate = request.IssueDate ?? DateOnly.FromDateTime(now);
             var dueDate = request.DueDate ?? invoice.DueDate ?? issueDate;
-            var sequence = await dbContext.InvoiceNumberSequences.SingleOrDefaultAsync(
-                x => x.TenantId == tenantContext.TenantId && x.FiscalYear == issueDate.Year, cancellationToken);
-            if (sequence is null)
-            {
-                sequence = InvoiceNumberSequence.Create(tenantContext.TenantId, checked((short)issueDate.Year), now);
-                dbContext.InvoiceNumberSequences.Add(sequence);
-            }
-
-            var number = sequence.Allocate(now);
+            var number = await invoiceNumberAllocator.AllocateAsync(checked((short)issueDate.Year), now, cancellationToken);
             var snapshot = new BillToSnapshot(customer.Code, customer.LegalName, location.TaxNumber ?? customer.TaxNumber,
                 location.AddressLine1, location.AddressLine2, location.City, location.StateProvince,
                 location.PostalCode, location.CountryCode);
             invoice.Issue($"INV-{issueDate.Year}-{number:D6}", snapshot, issueDate, dueDate, now, context.UserId, context.CorrelationId);
-        }, cancellationToken, IsolationLevel.Serializable);
+        }, cancellationToken);
 
     public Task<InvoiceDto> MarkPaidAsync(Guid invoiceId, MarkInvoicePaidRequest request, InvoiceOperationContext context, CancellationToken cancellationToken) =>
         ExecuteMutationAsync(invoiceId, "invoice.mark-paid", request, context, (invoice, now) =>
@@ -164,17 +154,35 @@ internal sealed class InvoiceService(
 
     public async Task<InvoiceDashboardDto> GetDashboardAsync(DateOnly asOf, CancellationToken cancellationToken)
     {
-        var rows = await dbContext.Invoices.AsNoTracking()
-            .Select(x => new { x.CurrencyCode, x.Status, x.Total, x.DueDate })
+        var rows = await dbContext.Invoices
+            .AsNoTracking()
+            .GroupBy(x => x.CurrencyCode)
+            .Select(group => new
+            {
+                CurrencyCode = group.Key,
+                DraftCount = group.Count(x => x.Status == InvoiceStatus.Draft),
+                DraftAmount = group.Where(x => x.Status == InvoiceStatus.Draft).Sum(x => (decimal?)x.Total) ?? 0m,
+                IssuedCount = group.Count(x => x.Status == InvoiceStatus.Issued),
+                IssuedAmount = group.Where(x => x.Status == InvoiceStatus.Issued).Sum(x => (decimal?)x.Total) ?? 0m,
+                PaidCount = group.Count(x => x.Status == InvoiceStatus.Paid),
+                PaidAmount = group.Where(x => x.Status == InvoiceStatus.Paid).Sum(x => (decimal?)x.Total) ?? 0m,
+                VoidCount = group.Count(x => x.Status == InvoiceStatus.Void),
+                VoidAmount = group.Where(x => x.Status == InvoiceStatus.Void).Sum(x => (decimal?)x.Total) ?? 0m,
+                OverdueCount = group.Count(x => x.Status == InvoiceStatus.Issued && x.DueDate < asOf),
+                OverdueAmount = group
+                    .Where(x => x.Status == InvoiceStatus.Issued && x.DueDate < asOf)
+                    .Sum(x => (decimal?)x.Total) ?? 0m,
+            })
+            .OrderBy(x => x.CurrencyCode)
             .ToListAsync(cancellationToken);
 
-        var summaries = rows.GroupBy(x => x.CurrencyCode).OrderBy(x => x.Key).Select(group =>
-        {
-            InvoiceAmountSummary For(InvoiceStatus status) => new(group.Count(x => x.Status == status), group.Where(x => x.Status == status).Sum(x => x.Total));
-            var overdue = group.Where(x => x.Status == InvoiceStatus.Issued && x.DueDate < asOf);
-            return new InvoiceCurrencySummary(group.Key, For(InvoiceStatus.Draft), For(InvoiceStatus.Issued),
-                For(InvoiceStatus.Paid), For(InvoiceStatus.Void), new(overdue.Count(), overdue.Sum(x => x.Total)));
-        }).ToList();
+        var summaries = rows.Select(row => new InvoiceCurrencySummary(
+            row.CurrencyCode,
+            new(row.DraftCount, row.DraftAmount),
+            new(row.IssuedCount, row.IssuedAmount),
+            new(row.PaidCount, row.PaidAmount),
+            new(row.VoidCount, row.VoidAmount),
+            new(row.OverdueCount, row.OverdueAmount))).ToList();
 
         return new(asOf, summaries);
     }
@@ -198,7 +206,7 @@ internal sealed class InvoiceService(
             await dbContext.SaveChangesAsync(cancellationToken);
             return Map(invoice);
         }, cancellationToken, isolation);
-        CommandCompleted(logger, operation, invoiceId, null);
+        LogCommandCompleted(logger, operation, invoiceId);
         return result;
     }
 
@@ -252,9 +260,131 @@ internal sealed class InvoiceService(
 
     private IQueryable<Invoice> InvoiceQuery(bool asTracking)
     {
-        var query = dbContext.Invoices.Include(x => x.LineItems).Include(x => x.StatusHistory).AsQueryable();
+        var query = dbContext.Invoices
+            .Include(x => x.LineItems)
+            .Include(x => x.StatusHistory)
+            .AsSplitQuery();
         return asTracking ? query : query.AsNoTracking();
     }
+
+    private static string NormalizeSort(string? sort) => sort?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "-createdutc" => "-createdutc",
+        "createdutc" => "createdutc",
+        "duedate" => "duedate",
+        "-duedate" => "-duedate",
+        "total" => "total",
+        "-total" => "-total",
+        _ => throw AppException.Validation("invoice.sort_invalid", "The requested sort is not supported."),
+    };
+
+    private static IQueryable<Invoice> ApplyOrdering(IQueryable<Invoice> invoices, string sort) => sort switch
+    {
+        "createdutc" => invoices.OrderBy(x => x.CreatedUtc).ThenBy(x => x.Id),
+        "duedate" => invoices.OrderBy(x => x.DueDate).ThenBy(x => x.Id),
+        "-duedate" => invoices.OrderByDescending(x => x.DueDate).ThenByDescending(x => x.Id),
+        "total" => invoices.OrderBy(x => x.Total).ThenBy(x => x.Id),
+        "-total" => invoices.OrderByDescending(x => x.Total).ThenByDescending(x => x.Id),
+        _ => invoices.OrderByDescending(x => x.CreatedUtc).ThenByDescending(x => x.Id),
+    };
+
+    private static IQueryable<Invoice> ApplyCursor(
+        IQueryable<Invoice> invoices,
+        InvoiceSearchCursor? cursor,
+        string sort)
+    {
+        if (cursor is null)
+        {
+            return invoices;
+        }
+
+        return sort switch
+        {
+            "createdutc" => invoices.Where(x =>
+                x.CreatedUtc > cursor.CreatedUtc || x.CreatedUtc == cursor.CreatedUtc && x.Id > cursor.Id),
+            "-createdutc" => invoices.Where(x =>
+                x.CreatedUtc < cursor.CreatedUtc || x.CreatedUtc == cursor.CreatedUtc && x.Id < cursor.Id),
+            "duedate" when cursor.DueDate is null => invoices.Where(x =>
+                x.DueDate == null && x.Id > cursor.Id || x.DueDate != null),
+            "duedate" => invoices.Where(x =>
+                x.DueDate > cursor.DueDate || x.DueDate == cursor.DueDate && x.Id > cursor.Id),
+            "-duedate" when cursor.DueDate is null => invoices.Where(x =>
+                x.DueDate == null && x.Id < cursor.Id),
+            "-duedate" => invoices.Where(x =>
+                x.DueDate < cursor.DueDate || x.DueDate == cursor.DueDate && x.Id < cursor.Id || x.DueDate == null),
+            "total" => invoices.Where(x =>
+                x.Total > cursor.Total || x.Total == cursor.Total && x.Id > cursor.Id),
+            "-total" => invoices.Where(x =>
+                x.Total < cursor.Total || x.Total == cursor.Total && x.Id < cursor.Id),
+            _ => invoices,
+        };
+    }
+
+    private static InvoiceSearchCursor? DecodeCursor(InvoiceListQuery query, string sort)
+    {
+        if (string.IsNullOrWhiteSpace(query.ContinuationToken))
+        {
+            return null;
+        }
+
+        try
+        {
+            var token = query.ContinuationToken.Replace('-', '+').Replace('_', '/');
+            token = token.PadRight(token.Length + (4 - token.Length % 4) % 4, '=');
+            var cursor = JsonSerializer.Deserialize<InvoiceSearchCursor>(Convert.FromBase64String(token), JsonOptions)
+                ?? throw new JsonException("Cursor payload is empty.");
+            if (!string.Equals(cursor.Sort, sort, StringComparison.Ordinal) ||
+                !string.Equals(cursor.Scope, CreateCursorScope(query, sort), StringComparison.Ordinal))
+            {
+                throw new JsonException("Cursor does not match the current search.");
+            }
+
+            return cursor;
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            throw AppException.Validation("invoice.cursor_invalid", "The continuation token is invalid for this search.");
+        }
+    }
+
+    private static string EncodeCursor(InvoiceListQuery query, string sort, InvoiceListItemDto item)
+    {
+        var cursor = new InvoiceSearchCursor(
+            sort,
+            CreateCursorScope(query, sort),
+            item.Id,
+            item.CreatedUtc,
+            item.DueDate,
+            item.Total);
+        return Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(cursor, JsonOptions))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private static string CreateCursorScope(InvoiceListQuery query, string sort)
+    {
+        var scope = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            query.Status,
+            query.CustomerId,
+            query.From,
+            query.To,
+            query.DueFrom,
+            query.DueTo,
+            InvoiceNumber = query.InvoiceNumber?.Trim(),
+            Sort = sort,
+        }, JsonOptions);
+        return Convert.ToHexString(SHA256.HashData(scope).AsSpan(0, 12));
+    }
+
+    private sealed record InvoiceSearchCursor(
+        string Sort,
+        string Scope,
+        Guid Id,
+        DateTime CreatedUtc,
+        DateOnly? DueDate,
+        decimal Total);
 
     private static void ValidateCreate(CreateInvoiceRequest request)
     {
@@ -283,6 +413,18 @@ internal sealed class InvoiceService(
         if (!string.Equals(supplied, Convert.ToBase64String(invoice.RowVersion), StringComparison.Ordinal))
             throw AppException.Conflict("invoice.concurrency_conflict", "The invoice changed since it was retrieved.");
     }
+
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Information,
+        Message = "Draft invoice {InvoiceId} created")]
+    private static partial void LogDraftCreated(ILogger logger, Guid invoiceId);
+
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Information,
+        Message = "Invoice command {Operation} completed for {InvoiceId}")]
+    private static partial void LogCommandCompleted(ILogger logger, string operation, Guid invoiceId);
 
     private static InvoiceDto Map(Invoice invoice) => new(
         invoice.Id, invoice.CustomerId, invoice.CustomerLocationId, invoice.InvoiceNumber, invoice.Status,

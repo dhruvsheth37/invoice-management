@@ -63,6 +63,19 @@ public sealed class PersistenceModelTests
         AssertRequiredUserId(entity.FindProperty(nameof(InvoiceStatusHistory.ChangedBy)));
     }
 
+    [Fact]
+    public void Invoice_model_has_keyset_and_dashboard_indexes()
+    {
+        using var context = CreateContext();
+        var invoice = context.Model.FindEntityType(typeof(Invoice))!;
+        var indexNames = invoice.GetIndexes().Select(index => index.GetDatabaseName()).ToHashSet();
+
+        Assert.Contains("IX_Invoices_TenantId_IsActive_CreatedUtc_Id", indexNames);
+        Assert.Contains("IX_Invoices_TenantId_IsActive_DueDate_Id", indexNames);
+        Assert.Contains("IX_Invoices_TenantId_IsActive_Total_Id", indexNames);
+        Assert.Contains("IX_Invoices_TenantId_IsActive_CurrencyCode_StatusId_DueDate", indexNames);
+    }
+
     private static void AssertRequiredUserId(IProperty? property)
     {
         Assert.NotNull(property);
@@ -77,13 +90,8 @@ public sealed class PersistenceModelTests
             .UseSqlServer("Server=localhost;Database=ModelOnly;User Id=sa;TrustServerCertificate=True")
             .Options;
 
-        return new InvoiceDbContext(options, new TestTenantContext());
-    }
-
-    private sealed class TestTenantContext : ITenantContext
-    {
-        public Guid TenantId { get; } = Guid.NewGuid();
-
-        public bool IsResolved => true;
+        var context = new InvoiceDbContext(options);
+        context.SetTenant(Guid.NewGuid());
+        return context;
     }
 }

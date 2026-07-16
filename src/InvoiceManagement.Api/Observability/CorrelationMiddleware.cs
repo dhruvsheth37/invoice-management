@@ -6,6 +6,9 @@ namespace InvoiceManagement.Api.Observability;
 public sealed partial class CorrelationMiddleware(RequestDelegate next, ILogger<CorrelationMiddleware> logger)
 {
     public const string HeaderName = "X-Correlation-ID";
+    private static readonly Func<ILogger, string, string, IDisposable?> CorrelationScope =
+        LoggerMessage.DefineScope<string, string>(
+            "CorrelationId:{CorrelationId} TraceId:{TraceId}");
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -26,14 +29,11 @@ public sealed partial class CorrelationMiddleware(RequestDelegate next, ILogger<
             throw new InvalidCorrelationException("X-Correlation-ID must contain 1-64 letters, digits, dots, underscores, colons, or hyphens.");
         }
 
-        using (logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["CorrelationId"] = correlationId,
-            ["TraceId"] = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier,
-        }))
-        {
-            await next(context);
-        }
+        using var scope = CorrelationScope(
+            logger,
+            correlationId,
+            Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier);
+        await next(context);
     }
 
     [GeneratedRegex("^[A-Za-z0-9._:-]+$", RegexOptions.CultureInvariant)]

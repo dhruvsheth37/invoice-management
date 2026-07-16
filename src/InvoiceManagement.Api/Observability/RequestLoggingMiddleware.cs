@@ -2,16 +2,16 @@ using System.Diagnostics;
 
 namespace InvoiceManagement.Api.Observability;
 
-public sealed class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
+public sealed partial class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
 {
-    private static readonly Action<ILogger, string, string?, int, double, Exception?> RequestCompleted =
-        LoggerMessage.Define<string, string?, int, double>(
-            LogLevel.Information,
-            new EventId(2001, nameof(RequestCompleted)),
-            "HTTP {Method} {Path} completed with {StatusCode} in {ElapsedMilliseconds:F2} ms");
-
     public async Task InvokeAsync(HttpContext context)
     {
+        if (context.Request.Path.StartsWithSegments("/health") || !logger.IsEnabled(LogLevel.Debug))
+        {
+            await next(context);
+            return;
+        }
+
         var started = Stopwatch.GetTimestamp();
         try
         {
@@ -19,13 +19,23 @@ public sealed class RequestLoggingMiddleware(RequestDelegate next, ILogger<Reque
         }
         finally
         {
-            RequestCompleted(
+            LogRequestCompleted(
                 logger,
                 context.Request.Method,
                 context.Request.Path.Value,
                 context.Response.StatusCode,
-                Stopwatch.GetElapsedTime(started).TotalMilliseconds,
-                null);
+                Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         }
     }
+
+    [LoggerMessage(
+        EventId = 2001,
+        Level = LogLevel.Debug,
+        Message = "HTTP {Method} {Path} completed with {StatusCode} in {ElapsedMilliseconds:F2} ms")]
+    private static partial void LogRequestCompleted(
+        ILogger logger,
+        string method,
+        string? path,
+        int statusCode,
+        double elapsedMilliseconds);
 }
