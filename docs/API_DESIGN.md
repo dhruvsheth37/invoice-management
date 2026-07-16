@@ -41,6 +41,28 @@ There is no generic `PATCH /status`. Each lifecycle route expresses a business o
 
 No delete endpoint is implemented. Business records use `IsActive`; any future invoice deactivation operation must be limited to Draft invoices.
 
+### 3.1 Why lifecycle operations use separate endpoints
+
+`issue`, `mark-paid`, and `void` are separate business commands rather than three generic ways to update the `Status` field. Each command has a different source-state rule, request contract, validation, side effect, and audit meaning:
+
+| Command | Allowed source state | Command-specific data | Important side effects |
+|---|---|---|---|
+| `issue` | Draft | Issue date and due date | Allocates the invoice number and captures the bill-to snapshot |
+| `mark-paid` | Issued | Paid date and external reference | Records confirmation from the external payment/accounting process |
+| `void` | Draft or Issued | Required reason | Cancels the invoice while retaining its financial history |
+
+Separate endpoints provide:
+
+- Strongly typed request models without unrelated optional fields.
+- Clear OpenAPI documentation and client intent.
+- Command-specific validation, authorization, idempotency scope, and audit records.
+- Independent evolution when one lifecycle operation gains new fields or rules.
+- Protection against clients assigning arbitrary statuses and bypassing domain behavior.
+
+A combined endpoint such as `POST /invoices/{invoiceId}/transition` would require an action discriminator and a union of conditionally valid fields such as `issueDate`, `paidDate`, `reference`, and `reason`. It would move complexity into a controller switch, weaken compile-time request validation, and make authorization and API documentation action-dependent. If the lifecycle later grows into a large event-driven state machine, a discriminated command endpoint may become appropriate, but it should still dispatch to separate command handlers internally.
+
+The three actions remain methods of the same `InvoicesController` and share the private response/ETag handling helper. This avoids implementation duplication without merging distinct public contracts.
+
 ## 4. Create draft
 
 ```http
