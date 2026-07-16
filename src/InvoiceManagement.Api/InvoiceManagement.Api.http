@@ -10,8 +10,22 @@ GET {{host}}/health/ready
 
 ###
 
-GET {{host}}/api/v1/invoices?page=1&pageSize=25
+POST {{host}}/api/v1/invoices/search
 X-Tenant-Id: {{tenantId}}
+Content-Type: application/json
+
+{
+  "page": 1,
+  "pageSize": 25,
+  "status": null,
+  "customerId": null,
+  "from": null,
+  "to": null,
+  "dueFrom": null,
+  "dueTo": null,
+  "invoiceNumber": null,
+  "sort": "-createdUtc"
+}
 
 ###
 

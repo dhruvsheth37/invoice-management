@@ -1,5 +1,4 @@
 using InvoiceManagement.Application.Invoices;
-using InvoiceManagement.Domain.Invoices;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiceManagement.Api.Controllers;
@@ -17,21 +16,12 @@ public sealed class InvoicesController(IInvoiceService service) : ControllerBase
         return CreatedAtAction(nameof(Get), new { invoiceId = result.Id }, result);
     }
 
-    [HttpGet]
+    [HttpPost("search")]
     [ProducesResponseType<PagedResult<InvoiceListItemDto>>(StatusCodes.Status200OK)]
-    public Task<PagedResult<InvoiceListItemDto>> List(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 25,
-        [FromQuery] InvoiceStatus? status = null,
-        [FromQuery] Guid? customerId = null,
-        [FromQuery] DateOnly? from = null,
-        [FromQuery] DateOnly? to = null,
-        [FromQuery] DateOnly? dueFrom = null,
-        [FromQuery] DateOnly? dueTo = null,
-        [FromQuery] string? invoiceNumber = null,
-        [FromQuery] string? sort = null,
+    public Task<PagedResult<InvoiceListItemDto>> Search(
+        [FromBody] InvoiceListQuery request,
         CancellationToken cancellationToken = default) =>
-        service.ListAsync(new(page, pageSize, status, customerId, from, to, dueFrom, dueTo, invoiceNumber, sort), cancellationToken);
+        service.ListAsync(request, cancellationToken);
 
     [HttpGet("{invoiceId:guid}")]
     [ProducesResponseType<InvoiceDto>(StatusCodes.Status200OK)]

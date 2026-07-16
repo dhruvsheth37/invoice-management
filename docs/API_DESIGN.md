@@ -30,7 +30,7 @@ The server returns `X-Correlation-ID`, `traceparent` context through standard in
 | Method | Route | Purpose |
 |---|---|---|
 | `POST` | `/api/v1/invoices` | Create a draft invoice |
-| `GET` | `/api/v1/invoices` | List tenant invoices |
+| `POST` | `/api/v1/invoices/search` | Search tenant invoices using body filters |
 | `GET` | `/api/v1/invoices/{invoiceId}` | Retrieve invoice details |
 | `POST` | `/api/v1/invoices/{invoiceId}/issue` | Issue a draft |
 | `POST` | `/api/v1/invoices/{invoiceId}/mark-paid` | Confirm an issued invoice as paid |
@@ -82,7 +82,23 @@ Validation includes:
 ## 5. List invoices
 
 ```http
-GET /api/v1/invoices?page=1&pageSize=25&status=Issued&customerId={id}&from=2026-01-01&to=2026-12-31&sort=-createdUtc
+POST /api/v1/invoices/search
+Content-Type: application/json
+```
+
+```json
+{
+  "page": 1,
+  "pageSize": 25,
+  "status": "Issued",
+  "customerId": "73ecdfb4-fc0d-49f5-b256-b0b8450e0f3d",
+  "from": "2026-01-01",
+  "to": "2026-12-31",
+  "dueFrom": null,
+  "dueTo": null,
+  "invoiceNumber": null,
+  "sort": "-createdUtc"
+}
 ```
 
 Supported filters:
