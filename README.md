@@ -4,7 +4,7 @@ Production-minded, multi-tenant invoice management API designed for the Qwiik te
 
 ## Current status
 
-Phase 2 establishes the .NET 10 solution, domain foundation, EF Core SQL Server model, initial migration, selective temporal history, active-record filtering, health checks, and database deployment artifacts. Core HTTP invoice workflows are planned for Phase 3.
+Phase 3 adds the tenant-scoped HTTP workflows for Draft creation, invoice queries, issue, mark-paid, void, and dashboard summaries. It includes server-calculated totals, bill-to snapshots, atomic numbering, idempotency, ETags, validation, and the reviewable OpenAPI contract in `docs/openapi.yaml`.
 
 ## Foundation verification
 

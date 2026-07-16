@@ -1,0 +1,114 @@
+openapi: 3.0.3
+info:
+  title: Invoice Management API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5080
+components:
+  parameters:
+    TenantId: { name: X-Tenant-Id, in: header, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 100 } }
+    IfMatch: { name: If-Match, in: header, required: true, schema: { type: string } }
+    InvoiceId: { name: invoiceId, in: path, required: true, schema: { type: string, format: uuid } }
+  schemas:
+    InvoiceLineInput:
+      type: object
+      required: [description, quantity, unitPrice, taxRate]
+      properties:
+        description: { type: string, maxLength: 500 }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unitPrice: { type: number, minimum: 0 }
+        taxRate: { type: number, minimum: 0, maximum: 1 }
+    CreateInvoice:
+      type: object
+      required: [customerId, customerLocationId, currencyCode, lineItems]
+      properties:
+        customerId: { type: string, format: uuid }
+        customerLocationId: { type: string, format: uuid }
+        currencyCode: { type: string, minLength: 3, maxLength: 3 }
+        dueDate: { type: string, format: date, nullable: true }
+        notes: { type: string, maxLength: 1000, nullable: true }
+        lineItems: { type: array, minItems: 1, maxItems: 100, items: { $ref: '#/components/schemas/InvoiceLineInput' } }
+    InvoiceSearch:
+      type: object
+      properties:
+        page: { type: integer, default: 1, minimum: 1 }
+        pageSize: { type: integer, default: 25, minimum: 1, maximum: 100 }
+        status: { type: string, enum: [Draft, Issued, Paid, Void], nullable: true }
+        customerId: { type: string, format: uuid, nullable: true }
+        from: { type: string, format: date, nullable: true }
+        to: { type: string, format: date, nullable: true }
+        dueFrom: { type: string, format: date, nullable: true }
+        dueTo: { type: string, format: date, nullable: true }
+        invoiceNumber: { type: string, nullable: true }
+        sort: { type: string, nullable: true }
+    Invoice:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        invoiceNumber: { type: string, nullable: true }
+        status: { type: string, enum: [Draft, Issued, Paid, Void] }
+        currencyCode: { type: string }
+        subtotal: { type: number }
+        taxTotal: { type: number }
+        total: { type: number }
+        eTag: { type: string }
+    Problem:
+      type: object
+      properties:
+        status: { type: integer }
+        title: { type: string }
+        detail: { type: string }
+        errorCode: { type: string }
+  responses:
+    Problem:
+      description: Request failed
+      content:
+        application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } }
+paths:
+  /api/v1/invoices:
+    post:
+      summary: Create a Draft invoice
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateInvoice' } } }
+      responses:
+        '201': { description: Draft created, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/invoices/search:
+    post:
+      summary: List tenant invoices
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceSearch' } } }
+      responses: { '200': { description: Paged invoice list }, '422': { $ref: '#/components/responses/Problem' } }
+  /api/v1/invoices/{invoiceId}:
+    get:
+      summary: Get invoice details
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/InvoiceId' }]
+      responses:
+        '200': { description: Invoice details, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/invoices/{invoiceId}/issue:
+    post:
+      summary: Issue a Draft invoice
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' }, { $ref: '#/components/parameters/InvoiceId' }]
+      responses: { '200': { description: Issued invoice }, '409': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
+  /api/v1/invoices/{invoiceId}/mark-paid:
+    post:
+      summary: Mark an Issued invoice paid
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' }, { $ref: '#/components/parameters/InvoiceId' }]
+      responses: { '200': { description: Paid invoice }, '409': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
+  /api/v1/invoices/{invoiceId}/void:
+    post:
+      summary: Void a Draft or Issued invoice
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' }, { $ref: '#/components/parameters/InvoiceId' }]
+      responses: { '200': { description: Voided invoice }, '409': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
+  /api/v1/dashboard/invoice-summary:
+    get:
+      summary: Get currency-separated invoice totals
+      parameters: [{ $ref: '#/components/parameters/TenantId' }, { name: asOf, in: query, schema: { type: string, format: date } }]
+      responses: { '200': { description: Dashboard summary } }

@@ -1,4 +1,6 @@
 using InvoiceManagement.Application.Abstractions.Persistence;
+using InvoiceManagement.Application.Invoices;
+using InvoiceManagement.Infrastructure.Invoices;
 using InvoiceManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +23,8 @@ public static class DependencyInjection
                 sql => sql.MigrationsAssembly(typeof(InvoiceDbContext).Assembly.FullName)));
 
         services.AddScoped<IInvoiceDbContext>(provider => provider.GetRequiredService<InvoiceDbContext>());
+        services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddSingleton(TimeProvider.System);
         return services;
     }
 }

@@ -31,4 +31,33 @@ public sealed class IdempotencyRequest
     public DateTime? CompletedUtc { get; private set; }
 
     public DateTime ExpiresUtc { get; private set; }
+
+    public static IdempotencyRequest Start(
+        Guid id,
+        Guid tenantId,
+        string operation,
+        string key,
+        byte[] requestHash,
+        string correlationId,
+        DateTime now) => new()
+        {
+            Id = id,
+            TenantId = tenantId,
+            Operation = operation,
+            IdempotencyKey = key,
+            RequestHash = requestHash,
+            State = IdempotencyState.Processing,
+            CorrelationId = correlationId,
+            CreatedUtc = now,
+            ExpiresUtc = now.AddHours(24),
+        };
+
+    public void Complete(Guid resourceId, short responseStatus, string responseBody, DateTime now)
+    {
+        ResourceId = resourceId;
+        ResponseStatus = responseStatus;
+        ResponseBody = responseBody;
+        State = IdempotencyState.Completed;
+        CompletedUtc = now;
+    }
 }
