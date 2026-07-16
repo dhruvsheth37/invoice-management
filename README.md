@@ -4,7 +4,7 @@ Production-minded, multi-tenant invoice management API designed for the Qwiik te
 
 ## Current status
 
-Phase 4 hardens the API boundary with environment-specific authentication, trusted tenant-claim resolution, correlation and W3C tracing, structured JSON logs, centralized ProblemDetails, tenant-partitioned rate limiting, request timeouts, and JSON health responses.
+Phase 5 adds automated verification for invoice calculations, lifecycle rules, validation, numbering, HTTP behavior, tenant isolation, idempotency, temporal history, and optimistic concurrency.
 
 ## Foundation verification
 
@@ -16,6 +16,7 @@ dotnet test InvoiceManagement.sln --no-build --no-restore
 ```
 
 For local SQL Server setup, see [database/README.md](database/README.md).
+For the test tiers and SQL Server integration setup, see [tests/README.md](tests/README.md).
 
 Development API requests require `X-Tenant-Id`; production requires a validated bearer token containing `tenant_id`. See [Security and observability](docs/SECURITY_AND_OBSERVABILITY.md).
 
