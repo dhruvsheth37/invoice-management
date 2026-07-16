@@ -30,7 +30,8 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             Name = "Demo Tenant",
             IsActive = true,
             CreatedUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            CreatedBy = "seed",
+            CreatedBy = 1,
+            ModifiedBy = 1,
         });
     }
 }

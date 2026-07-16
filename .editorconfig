@@ -1,0 +1,15 @@
+root = true
+
+[*.cs]
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
+dotnet_analyzer_diagnostic.category-Security.severity = warning
+dotnet_analyzer_diagnostic.category-Performance.severity = warning
+dotnet_analyzer_diagnostic.category-Maintainability.severity = warning
+
+[**/Persistence/Migrations/*.cs]
+generated_code = true
+dotnet_diagnostic.CA1861.severity = none
+
+[tests/**/*.cs]
+# Underscore-separated behavior names are intentional for test readability.
+dotnet_diagnostic.CA1707.severity = none

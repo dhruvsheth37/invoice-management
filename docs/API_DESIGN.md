@@ -18,6 +18,7 @@
 |---|---|---|
 | `Authorization` | Production | JWT identity and trusted tenant claim |
 | `X-Tenant-Id` | Development/test only | Local tenant resolution |
+| `X-Development-User-Id` | Development only | Optional positive integer user ID; defaults to `1` |
 | `traceparent` | Optional | W3C distributed trace context |
 | `X-Correlation-ID` | Optional | Human-searchable operation correlation |
 | `Idempotency-Key` | Required for mutating POSTs | Retry protection |

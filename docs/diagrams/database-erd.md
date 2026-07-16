@@ -90,7 +90,7 @@ erDiagram
         tinyint ToStatusId FK
         nvarchar Reason
         datetime2 ChangedUtc
-        nvarchar ChangedBy
+        int ChangedBy
         varchar CorrelationId
     }
 

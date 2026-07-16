@@ -20,7 +20,7 @@ public sealed class Invoice : ActivatableTenantEntity
         DateOnly? dueDate,
         string? notes,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
         : base(id, tenantId, createdUtc, createdBy)
     {
         CustomerId = customerId;
@@ -90,7 +90,7 @@ public sealed class Invoice : ActivatableTenantEntity
         DateOnly? dueDate,
         string? notes,
         DateTime createdUtc,
-        string createdBy,
+        int createdBy,
         string correlationId)
     {
         var normalizedCurrency = currencyCode.Trim().ToUpperInvariant();
@@ -122,7 +122,7 @@ public sealed class Invoice : ActivatableTenantEntity
         decimal unitPrice,
         decimal taxRate,
         DateTime modifiedUtc,
-        string modifiedBy)
+        int modifiedBy)
     {
         EnsureDraft();
         if (_lineItems.Any(line => line.IsActive && line.LineNumber == lineNumber))
@@ -152,7 +152,7 @@ public sealed class Invoice : ActivatableTenantEntity
         DateOnly issueDate,
         DateOnly dueDate,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId)
     {
         EnsureDraft();
@@ -177,7 +177,7 @@ public sealed class Invoice : ActivatableTenantEntity
         DateOnly paidDate,
         string externalReference,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId)
     {
         if (Status != InvoiceStatus.Issued)
@@ -198,7 +198,7 @@ public sealed class Invoice : ActivatableTenantEntity
     public void Void(
         string reason,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId)
     {
         if (Status is not (InvoiceStatus.Draft or InvoiceStatus.Issued))
@@ -215,7 +215,7 @@ public sealed class Invoice : ActivatableTenantEntity
         TransitionTo(InvoiceStatus.Void, VoidReason, changedUtc, changedBy, correlationId);
     }
 
-    public void DeactivateDraft(DateTime modifiedUtc, string modifiedBy)
+    public void DeactivateDraft(DateTime modifiedUtc, int modifiedBy)
     {
         EnsureDraft();
         foreach (var line in _lineItems.Where(line => line.IsActive))
@@ -243,7 +243,7 @@ public sealed class Invoice : ActivatableTenantEntity
         InvoiceStatus newStatus,
         string? reason,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId)
     {
         var previousStatus = Status;
@@ -257,7 +257,7 @@ public sealed class Invoice : ActivatableTenantEntity
         InvoiceStatus toStatus,
         string? reason,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId) =>
         _statusHistory.Add(InvoiceStatusHistory.Record(
             Guid.CreateVersion7(),

@@ -20,7 +20,7 @@ public sealed class InvoiceLineItem : ActivatableTenantEntity
         decimal unitPrice,
         decimal taxRate,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
         : base(id, tenantId, createdUtc, createdBy)
     {
         InvoiceId = invoiceId;
@@ -60,7 +60,7 @@ public sealed class InvoiceLineItem : ActivatableTenantEntity
         decimal unitPrice,
         decimal taxRate,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
     {
         if (lineNumber <= 0 || quantity <= 0 || unitPrice < 0 || taxRate is < 0 or > 1)
         {
@@ -85,7 +85,7 @@ public sealed class InvoiceLineItem : ActivatableTenantEntity
             createdBy);
     }
 
-    internal void Deactivate(DateTime modifiedUtc, string modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
+    internal void Deactivate(DateTime modifiedUtc, int modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
 
     private void Recalculate()
     {

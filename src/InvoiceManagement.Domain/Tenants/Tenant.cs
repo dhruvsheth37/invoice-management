@@ -8,7 +8,7 @@ public sealed class Tenant : AuditableEntity
     {
     }
 
-    private Tenant(Guid id, string slug, string name, DateTime createdUtc, string createdBy)
+    private Tenant(Guid id, string slug, string name, DateTime createdUtc, int createdBy)
         : base(id, createdUtc, createdBy)
     {
         Slug = slug;
@@ -22,7 +22,7 @@ public sealed class Tenant : AuditableEntity
 
     public bool IsActive { get; private set; }
 
-    public static Tenant Create(Guid id, string slug, string name, DateTime createdUtc, string createdBy)
+    public static Tenant Create(Guid id, string slug, string name, DateTime createdUtc, int createdBy)
     {
         if (string.IsNullOrWhiteSpace(slug) || string.IsNullOrWhiteSpace(name))
         {

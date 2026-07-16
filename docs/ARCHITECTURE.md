@@ -143,7 +143,7 @@ Policy:
 - Issued, Paid, and Void invoices are financial records and must remain active and retained; issued invoices are voided rather than deactivated.
 - Customers and locations referenced by an active Draft cannot be deactivated. Issued invoices remain readable from their immutable bill-to snapshots.
 - EF query filters exclude inactive business rows by default.
-- Standard `ModifiedUtc` and `ModifiedBy` audit fields record the last change, including deactivation.
+- Standard `ModifiedUtc` and integer `ModifiedBy` user IDs record the last change, including deactivation. `CreatedBy` and `ModifiedBy` are required and default to system user ID `1`.
 
 Activation is distinct from temporal history. `IsActive` controls normal visibility; temporal tables preserve prior row versions.
 

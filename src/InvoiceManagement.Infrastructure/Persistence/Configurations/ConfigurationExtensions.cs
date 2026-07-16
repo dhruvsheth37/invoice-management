@@ -10,9 +10,9 @@ internal static class ConfigurationExtensions
         where TEntity : AuditableEntity
     {
         builder.Property(entity => entity.CreatedUtc).HasColumnType("datetime2(7)");
-        builder.Property(entity => entity.CreatedBy).HasMaxLength(200).IsRequired();
+        builder.Property(entity => entity.CreatedBy).HasDefaultValue(1).IsRequired();
         builder.Property(entity => entity.ModifiedUtc).HasColumnType("datetime2(7)");
-        builder.Property(entity => entity.ModifiedBy).HasMaxLength(200);
+        builder.Property(entity => entity.ModifiedBy).HasDefaultValue(1).IsRequired();
         builder.Property(entity => entity.RowVersion).IsRowVersion().IsConcurrencyToken();
     }
 

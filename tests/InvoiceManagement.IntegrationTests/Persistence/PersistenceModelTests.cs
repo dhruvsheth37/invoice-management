@@ -1,6 +1,7 @@
 using InvoiceManagement.Application.Abstractions.Tenancy;
 using InvoiceManagement.Domain.Customers;
 using InvoiceManagement.Domain.Invoices;
+using InvoiceManagement.Domain.Tenants;
 using InvoiceManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -36,6 +37,38 @@ public sealed class PersistenceModelTests
         Assert.Equal(
             [nameof(Invoice.TenantId), nameof(Invoice.CustomerId), nameof(Invoice.CustomerLocationId)],
             foreignKey.Properties.Select(property => property.Name));
+    }
+
+    [Theory]
+    [InlineData(typeof(Tenant))]
+    [InlineData(typeof(Customer))]
+    [InlineData(typeof(CustomerLocation))]
+    [InlineData(typeof(Invoice))]
+    [InlineData(typeof(InvoiceLineItem))]
+    public void Audit_user_columns_are_required_integers_with_default_user_id(Type entityType)
+    {
+        using var context = CreateContext();
+        var entity = context.Model.FindEntityType(entityType)!;
+
+        AssertRequiredUserId(entity.FindProperty("CreatedBy"));
+        AssertRequiredUserId(entity.FindProperty("ModifiedBy"));
+    }
+
+    [Fact]
+    public void Status_history_actor_is_a_required_integer_with_default_user_id()
+    {
+        using var context = CreateContext();
+        var entity = context.Model.FindEntityType(typeof(InvoiceStatusHistory))!;
+
+        AssertRequiredUserId(entity.FindProperty(nameof(InvoiceStatusHistory.ChangedBy)));
+    }
+
+    private static void AssertRequiredUserId(IProperty? property)
+    {
+        Assert.NotNull(property);
+        Assert.Equal(typeof(int), property.ClrType);
+        Assert.False(property.IsNullable);
+        Assert.Equal(1, property.GetDefaultValue());
     }
 
     private static InvoiceDbContext CreateContext()
