@@ -1,13 +1,13 @@
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    platform: linux/amd64      
+    platform: linux/amd64
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Developer
       MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}
     ports:
-      - "1433:1433"
+      - "${PODMAN_SQL_PORT:-1433}:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
     healthcheck:

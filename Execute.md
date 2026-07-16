@@ -41,24 +41,27 @@ docker compose logs sqlserver
 
 ### Podman alternative
 
-Start the Podman virtual machine on macOS, then use the repository's Podman Compose file:
+The repository includes scripts for the complete Podman workflow. To start SQL Server, apply migrations, and load all demo data in one operation:
 
 ```bash
-podman machine start
-podman compose --file podman-compose.yml up -d --wait sqlserver
+./scripts/podman/setup.sh
 ```
 
-Check SQL Server startup with:
+The individual operations are:
 
 ```bash
-podman compose --file podman-compose.yml ps
-podman compose --file podman-compose.yml logs sqlserver
+./scripts/podman/start.sh
+./scripts/podman/migrate.sh
+./scripts/podman/seed.sh
+./scripts/podman/run-api.sh
+./scripts/podman/status.sh
+./scripts/podman/stop.sh
 ```
 
-For later commands in this guide, replace `docker compose` with:
+Podman uses host port `1433` by default. If Docker SQL Server is already using that port, either stop the Docker service or set a different Podman port in `.env`:
 
-```text
-podman compose --file podman-compose.yml
+```dotenv
+PODMAN_SQL_PORT=1434
 ```
 
 ## 2. Configure and migrate the database
@@ -66,7 +69,7 @@ podman compose --file podman-compose.yml
 The API and EF design-time factory use different environment-variable names, so configure both from one connection string:
 
 ```bash
-export DB_CONNECTION="Server=localhost,1433;Database=InvoiceManagement;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+export DB_CONNECTION="Server=localhost,1433;Database=InvoiceManagement;User Id=sa;Password=Replace_with_a_strong_local_password_123!;Encrypt=True;TrustServerCertificate=True"
 export INVOICE_DATABASE_CONNECTION="$DB_CONNECTION"
 export ConnectionStrings__InvoiceDatabase="$DB_CONNECTION"
 ```
@@ -79,69 +82,48 @@ dotnet restore InvoiceManagement.sln
 
 dotnet ef database update \
   --project src/InvoiceManagement.Infrastructure \
-  --startup-project src/InvoiceManagement.Api
+  --startup-project src/InvoiceManagement.Api \
+  --verbose
 ```
 
 Database migrations are deliberately not executed during API startup.
 
-## 3. Seed data available by default
+## 3. Seed comprehensive demo data
 
 The EF migrations seed:
 
 - Demo tenant: `11111111-1111-1111-1111-111111111111`
 - Invoice statuses: Draft, Issued, Paid, and Void
 
-They do not seed a customer or customer location. Run the following idempotent script so invoice creation can be tested with the IDs already used by `InvoiceManagement.Api.http`:
+Run the dedicated idempotent demo script after applying migrations. It adds examples for every application table, including Draft, Issued, Paid, and Void invoices, lifecycle history, idempotency, number allocation, and system-generated temporal history. The IDs match `InvoiceManagement.Api.http`.
 
 ```bash
 docker compose exec -T sqlserver \
   /opt/mssql-tools18/bin/sqlcmd \
   -S localhost \
   -U sa \
-  -P "$SQL_SA_PASSWORD" \
+  -P "Replace_with_a_strong_local_password_123!" \
   -C \
   -b \
-  -d InvoiceManagement <<'SQL'
-DECLARE @TenantId uniqueidentifier = '11111111-1111-1111-1111-111111111111';
-DECLARE @CustomerId uniqueidentifier = '00000000-0000-0000-0000-000000000001';
-DECLARE @LocationId uniqueidentifier = '00000000-0000-0000-0000-000000000002';
-
-IF NOT EXISTS (SELECT 1 FROM Customers WHERE Id = @CustomerId)
-BEGIN
-    INSERT INTO Customers
-    (
-        Id, TenantId, Code, LegalName, TaxNumber, Email,
-        CreatedUtc, IsActive
-    )
-    VALUES
-    (
-        @CustomerId, @TenantId, N'ACME', N'Acme Logistics Ltd',
-        N'TAX-ACME-01', N'accounts@acme.test',
-        SYSUTCDATETIME(), 1
-    );
-END;
-
-IF NOT EXISTS (SELECT 1 FROM CustomerLocations WHERE Id = @LocationId)
-BEGIN
-    INSERT INTO CustomerLocations
-    (
-        Id, TenantId, CustomerId, Name,
-        AddressLine1, AddressLine2, City, StateProvince,
-        PostalCode, CountryCode, TaxNumber,
-        CreatedUtc, IsActive
-    )
-    VALUES
-    (
-        @LocationId, @TenantId, @CustomerId, N'Head Office',
-        N'1 Main Street', NULL, N'Mumbai', N'Maharashtra',
-        N'400001', 'IN', N'TAX-ACME-01',
-        SYSUTCDATETIME(), 1
-    );
-END;
-SQL
+  -d InvoiceManagement \
+  < database/seed/SeedDemoData.sql
 ```
 
-`CreatedBy` and `ModifiedBy` use their database default user ID of `1`.
+With Podman, use the same script with the Podman Compose file:
+
+```bash
+podman compose --file podman-compose.yml exec -T sqlserver \
+  /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost \
+  -U sa \
+  -P 'Replace_with_a_strong_local_password_123!' \
+  -C \
+  -b \
+  -d InvoiceManagement \
+  < database/seed/SeedDemoData.sql
+```
+
+`CreatedBy`, `ModifiedBy`, and `ChangedBy` use demo user ID `1`. The script can be run repeatedly without duplicating its fixed-ID sample rows.
 
 ## 4. Run the API
 
