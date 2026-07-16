@@ -1,0 +1,7 @@
+@InvoiceManagement.Api_HostAddress = http://localhost:5080
+
+GET {{InvoiceManagement.Api_HostAddress}}/health/live
+
+###
+
+GET {{InvoiceManagement.Api_HostAddress}}/health/ready

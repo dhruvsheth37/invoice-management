@@ -4,7 +4,18 @@ Production-minded, multi-tenant invoice management API designed for the Qwiik te
 
 ## Current status
 
-Phase 1 is the architecture and database decision pack. No application code has been generated yet.
+Phase 2 establishes the .NET 10 solution, domain foundation, EF Core SQL Server model, initial migration, selective temporal history, soft-deletion metadata, health checks, and database deployment artifacts. Core HTTP invoice workflows are planned for Phase 3.
+
+## Foundation verification
+
+```bash
+dotnet tool restore
+dotnet restore InvoiceManagement.sln
+dotnet build InvoiceManagement.sln --no-restore
+dotnet test InvoiceManagement.sln --no-build --no-restore
+```
+
+For local SQL Server setup, see [database/README.md](database/README.md).
 
 ## Decision documents
 
