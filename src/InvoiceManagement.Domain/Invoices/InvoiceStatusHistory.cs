@@ -14,7 +14,7 @@ public sealed class InvoiceStatusHistory
         InvoiceStatus toStatus,
         string? reason,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId)
     {
         Id = id;
@@ -42,7 +42,7 @@ public sealed class InvoiceStatusHistory
 
     public DateTime ChangedUtc { get; private set; }
 
-    public string ChangedBy { get; private set; } = string.Empty;
+    public int ChangedBy { get; private set; } = 1;
 
     public string CorrelationId { get; private set; } = string.Empty;
 
@@ -54,7 +54,7 @@ public sealed class InvoiceStatusHistory
         InvoiceStatus toStatus,
         string? reason,
         DateTime changedUtc,
-        string changedBy,
+        int changedBy,
         string correlationId) =>
         new(
             id,

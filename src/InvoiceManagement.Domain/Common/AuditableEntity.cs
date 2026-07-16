@@ -6,26 +6,27 @@ public abstract class AuditableEntity
     {
     }
 
-    protected AuditableEntity(Guid id, DateTime createdUtc, string createdBy)
+    protected AuditableEntity(Guid id, DateTime createdUtc, int createdBy)
     {
         Id = id;
         CreatedUtc = createdUtc;
         CreatedBy = createdBy;
+        ModifiedBy = createdBy;
     }
 
     public Guid Id { get; protected set; }
 
     public DateTime CreatedUtc { get; protected set; }
 
-    public string CreatedBy { get; protected set; } = string.Empty;
+    public int CreatedBy { get; protected set; } = 1;
 
     public DateTime? ModifiedUtc { get; protected set; }
 
-    public string? ModifiedBy { get; protected set; }
+    public int ModifiedBy { get; protected set; } = 1;
 
     public byte[] RowVersion { get; private set; } = [];
 
-    protected void Touch(DateTime modifiedUtc, string modifiedBy)
+    protected void Touch(DateTime modifiedUtc, int modifiedBy)
     {
         ModifiedUtc = modifiedUtc;
         ModifiedBy = modifiedBy;

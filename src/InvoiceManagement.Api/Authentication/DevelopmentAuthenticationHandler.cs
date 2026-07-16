@@ -20,15 +20,16 @@ public sealed class DevelopmentAuthenticationHandler(
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        var actor = Request.Headers["X-Development-User"].FirstOrDefault() ?? "development-user";
-        if (actor.Length is < 1 or > 200)
+        var suppliedUserId = Request.Headers["X-Development-User-Id"].FirstOrDefault() ?? "1";
+        if (!int.TryParse(suppliedUserId, out var userId) || userId <= 0)
         {
-            return Task.FromResult(AuthenticateResult.Fail("X-Development-User must contain 1-200 characters."));
+            return Task.FromResult(AuthenticateResult.Fail("X-Development-User-Id must be a positive integer."));
         }
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, actor),
-            new Claim(ClaimTypes.Name, actor),
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new Claim(ClaimTypes.Name, $"development-user-{userId}"),
+            new Claim("user_id", userId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             new Claim("tenant_id", tenantId.ToString()),
         };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));

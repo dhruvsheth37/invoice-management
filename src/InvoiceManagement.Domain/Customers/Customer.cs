@@ -16,7 +16,7 @@ public sealed class Customer : ActivatableTenantEntity
         string? taxNumber,
         string? email,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
         : base(id, tenantId, createdUtc, createdBy)
     {
         Code = code;
@@ -41,7 +41,7 @@ public sealed class Customer : ActivatableTenantEntity
         string? taxNumber,
         string? email,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
     {
         if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(legalName))
         {
@@ -59,7 +59,7 @@ public sealed class Customer : ActivatableTenantEntity
             createdBy);
     }
 
-    public void Deactivate(DateTime modifiedUtc, string modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
+    public void Deactivate(DateTime modifiedUtc, int modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

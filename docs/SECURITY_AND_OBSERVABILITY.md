@@ -4,8 +4,8 @@
 
 The HTTP boundary uses environment-specific authentication while keeping one tenant-resolution path:
 
-- **Development:** the `Development` authentication scheme requires `X-Tenant-Id` and creates a local identity. `X-Development-User` optionally supplies the actor name.
-- **Non-Development:** the JWT bearer handler validates tokens against `Authentication:Authority` and `Authentication:Audience` over HTTPS.
+- **Development:** the `Development` authentication scheme requires `X-Tenant-Id` and creates a local identity. `X-Development-User-Id` optionally supplies a positive integer user ID and defaults to `1`.
+- **Non-Development:** the JWT bearer handler validates tokens against `Authentication:Authority` and `Authentication:Audience` over HTTPS. The validated identity must include a positive integer `user_id` claim for mutations.
 - After authentication, `TenantResolutionMiddleware` reads the trusted `tenant_id` claim and populates the scoped tenant context.
 - Request bodies never supply the authoritative tenant identifier.
 - Controllers require authorization; health endpoints remain anonymous for platform probes.

@@ -23,7 +23,7 @@ public sealed record MarkInvoicePaidRequest(DateOnly PaidDate, string Reference)
 public sealed record VoidInvoiceRequest(string Reason);
 
 public sealed record InvoiceOperationContext(
-    string Actor,
+    int UserId,
     string CorrelationId,
     string IdempotencyKey,
     string? IfMatch);
@@ -56,7 +56,7 @@ public sealed record InvoiceStatusHistoryDto(
     InvoiceStatus ToStatus,
     string? Reason,
     DateTime ChangedUtc,
-    string ChangedBy,
+    int ChangedBy,
     string CorrelationId);
 
 public sealed record InvoiceDto(

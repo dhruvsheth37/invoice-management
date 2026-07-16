@@ -16,7 +16,7 @@ public sealed class CustomerLocation : ActivatableTenantEntity
         PostalAddress address,
         string? taxNumber,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
         : base(id, tenantId, createdUtc, createdBy)
     {
         CustomerId = customerId;
@@ -56,7 +56,7 @@ public sealed class CustomerLocation : ActivatableTenantEntity
         PostalAddress address,
         string? taxNumber,
         DateTime createdUtc,
-        string createdBy)
+        int createdBy)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -74,5 +74,5 @@ public sealed class CustomerLocation : ActivatableTenantEntity
             createdBy);
     }
 
-    public void Deactivate(DateTime modifiedUtc, string modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
+    public void Deactivate(DateTime modifiedUtc, int modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
 }

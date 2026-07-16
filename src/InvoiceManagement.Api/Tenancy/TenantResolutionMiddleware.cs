@@ -29,7 +29,8 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, ILogger<Ten
         using (logger.BeginScope(new Dictionary<string, object?>
         {
             ["TenantId"] = tenantId,
-            ["UserId"] = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            ["UserId"] = context.User.FindFirst("user_id")?.Value
+                ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
         }))
         {
             await next(context);

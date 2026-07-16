@@ -6,7 +6,7 @@ public abstract class ActivatableTenantEntity : TenantEntity
     {
     }
 
-    protected ActivatableTenantEntity(Guid id, Guid tenantId, DateTime createdUtc, string createdBy)
+    protected ActivatableTenantEntity(Guid id, Guid tenantId, DateTime createdUtc, int createdBy)
         : base(id, tenantId, createdUtc, createdBy)
     {
         IsActive = true;
@@ -14,7 +14,7 @@ public abstract class ActivatableTenantEntity : TenantEntity
 
     public bool IsActive { get; private set; }
 
-    protected void MarkInactive(DateTime modifiedUtc, string modifiedBy)
+    protected void MarkInactive(DateTime modifiedUtc, int modifiedBy)
     {
         if (!IsActive)
         {

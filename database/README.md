@@ -23,7 +23,7 @@ dotnet ef migrations script \
   --output database/generated/InvoiceManagement_Idempotent.sql
 ```
 
-`scripts/V1.0.0__InitialSchema.sql` is the readable initial migration script. Released scripts are immutable; later changes receive a new version.
+`scripts/V1.0.0__InitialSchema.sql` is the readable initial migration script. `scripts/V1.0.1__UseIntegerAuditUserIds.sql` migrates audit actors to required integer user IDs with a default of `1`. Released scripts are immutable; later changes receive a new version.
 
 ## Local connection
 

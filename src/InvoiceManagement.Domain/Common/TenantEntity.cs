@@ -6,7 +6,7 @@ public abstract class TenantEntity : AuditableEntity
     {
     }
 
-    protected TenantEntity(Guid id, Guid tenantId, DateTime createdUtc, string createdBy)
+    protected TenantEntity(Guid id, Guid tenantId, DateTime createdUtc, int createdBy)
         : base(id, createdUtc, createdBy)
     {
         TenantId = tenantId;

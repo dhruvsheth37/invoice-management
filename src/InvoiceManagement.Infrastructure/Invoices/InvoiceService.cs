@@ -20,6 +20,14 @@ internal sealed class InvoiceService(
     Microsoft.Extensions.Logging.ILogger<InvoiceService> logger) : IInvoiceService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly Action<ILogger, Guid, Exception?> DraftCreated = LoggerMessage.Define<Guid>(
+        LogLevel.Information,
+        new EventId(1001, nameof(DraftCreated)),
+        "Draft invoice {InvoiceId} created");
+    private static readonly Action<ILogger, string, Guid, Exception?> CommandCompleted = LoggerMessage.Define<string, Guid>(
+        LogLevel.Information,
+        new EventId(1002, nameof(CommandCompleted)),
+        "Invoice command {Operation} completed for {InvoiceId}");
 
     public async Task<InvoiceDto> CreateAsync(
         CreateInvoiceRequest request,
@@ -50,13 +58,13 @@ internal sealed class InvoiceService(
 
                 var invoice = Invoice.CreateDraft(
                     Guid.CreateVersion7(), tenantContext.TenantId, customer.Id, request.CustomerLocationId,
-                    request.CurrencyCode, request.DueDate, request.Notes, now, context.Actor, context.CorrelationId);
+                    request.CurrencyCode, request.DueDate, request.Notes, now, context.UserId, context.CorrelationId);
 
                 short lineNumber = 1;
                 foreach (var line in request.LineItems)
                 {
                     invoice.AddLine(Guid.CreateVersion7(), lineNumber++, line.Description, line.Quantity,
-                        line.UnitPrice, line.TaxRate, now, context.Actor);
+                        line.UnitPrice, line.TaxRate, now, context.UserId);
                 }
 
                 dbContext.Invoices.Add(invoice);
@@ -64,7 +72,7 @@ internal sealed class InvoiceService(
                 return Map(invoice);
             },
             cancellationToken);
-        logger.LogInformation("Draft invoice {InvoiceId} created", result.Id);
+        DraftCreated(logger, result.Id, null);
         return result;
     }
 
@@ -133,7 +141,7 @@ internal sealed class InvoiceService(
             var snapshot = new BillToSnapshot(customer.Code, customer.LegalName, location.TaxNumber ?? customer.TaxNumber,
                 location.AddressLine1, location.AddressLine2, location.City, location.StateProvince,
                 location.PostalCode, location.CountryCode);
-            invoice.Issue($"INV-{issueDate.Year}-{number:D6}", snapshot, issueDate, dueDate, now, context.Actor, context.CorrelationId);
+            invoice.Issue($"INV-{issueDate.Year}-{number:D6}", snapshot, issueDate, dueDate, now, context.UserId, context.CorrelationId);
         }, cancellationToken, IsolationLevel.Serializable);
 
     public Task<InvoiceDto> MarkPaidAsync(Guid invoiceId, MarkInvoicePaidRequest request, InvoiceOperationContext context, CancellationToken cancellationToken) =>
@@ -141,7 +149,7 @@ internal sealed class InvoiceService(
         {
             if (string.IsNullOrWhiteSpace(request.Reference) || request.Reference.Length > 100)
                 throw AppException.Validation("invoice.payment_reference_invalid", "Payment reference is required and cannot exceed 100 characters.");
-            invoice.MarkPaid(request.PaidDate, request.Reference, now, context.Actor, context.CorrelationId);
+            invoice.MarkPaid(request.PaidDate, request.Reference, now, context.UserId, context.CorrelationId);
             return Task.CompletedTask;
         }, cancellationToken);
 
@@ -150,7 +158,7 @@ internal sealed class InvoiceService(
         {
             if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length > 500)
                 throw AppException.Validation("invoice.void_reason_invalid", "Void reason is required and cannot exceed 500 characters.");
-            invoice.Void(request.Reason, now, context.Actor, context.CorrelationId);
+            invoice.Void(request.Reason, now, context.UserId, context.CorrelationId);
             return Task.CompletedTask;
         }, cancellationToken);
 
@@ -190,7 +198,7 @@ internal sealed class InvoiceService(
             await dbContext.SaveChangesAsync(cancellationToken);
             return Map(invoice);
         }, cancellationToken, isolation);
-        logger.LogInformation("Invoice command {Operation} completed for {InvoiceId}", operation, invoiceId);
+        CommandCompleted(logger, operation, invoiceId, null);
         return result;
     }
 

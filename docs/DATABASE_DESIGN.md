@@ -31,9 +31,9 @@ Applied to mutable tenant-owned business tables:
 | Column | SQL type | Null | Notes |
 |---|---|---:|---|
 | `CreatedUtc` | `datetime2(7)` | No | Set once using application `TimeProvider` |
-| `CreatedBy` | `nvarchar(200)` | No | Authenticated subject or system identifier |
+| `CreatedBy` | `int` | No | User ID; defaults to `1` |
 | `ModifiedUtc` | `datetime2(7)` | Yes | Updated on mutation |
-| `ModifiedBy` | `nvarchar(200)` | Yes | Actor responsible for last mutation |
+| `ModifiedBy` | `int` | No | User ID responsible for the last mutation; defaults to `1` |
 | `RowVersion` | `rowversion` | No | Optimistic concurrency token |
 
 ### Record activation
@@ -59,9 +59,9 @@ Tenant registry. Tenant retirement also uses `IsActive`.
 | `Name` | `nvarchar(200)` | No | Display name |
 | `IsActive` | `bit` | No | Default `1` |
 | `CreatedUtc` | `datetime2(7)` | No | UTC |
-| `CreatedBy` | `nvarchar(200)` | No | Provisioning actor |
+| `CreatedBy` | `int` | No | Provisioning user ID; defaults to `1` |
 | `ModifiedUtc` | `datetime2(7)` | Yes | UTC |
-| `ModifiedBy` | `nvarchar(200)` | Yes | Last actor |
+| `ModifiedBy` | `int` | No | Last user ID; defaults to `1` |
 | `RowVersion` | `rowversion` | No | Concurrency |
 
 Keys and constraints:
@@ -248,7 +248,7 @@ Append-only business audit log; not temporal and not subject to activation filte
 | `ToStatusId` | `tinyint` | No | Required |
 | `Reason` | `nvarchar(500)` | Yes | Business explanation |
 | `ChangedUtc` | `datetime2(7)` | No | UTC |
-| `ChangedBy` | `nvarchar(200)` | No | User or service subject |
+| `ChangedBy` | `int` | No | User ID that performed the status change; defaults to `1` |
 | `CorrelationId` | `varchar(64)` | No | Request correlation |
 
 Relationships:

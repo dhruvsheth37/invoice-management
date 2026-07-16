@@ -14,7 +14,7 @@ internal sealed class InvoiceStatusHistoryConfiguration : IEntityTypeConfigurati
         builder.Property(entity => entity.ToStatus).HasColumnName("ToStatusId").HasConversion<byte>();
         builder.Property(entity => entity.Reason).HasMaxLength(500);
         builder.Property(entity => entity.ChangedUtc).HasColumnType("datetime2(7)");
-        builder.Property(entity => entity.ChangedBy).HasMaxLength(200).IsRequired();
+        builder.Property(entity => entity.ChangedBy).HasDefaultValue(1).IsRequired();
         builder.Property(entity => entity.CorrelationId).HasColumnType("varchar(64)").IsRequired();
 
         builder.HasOne<InvoiceStatusReference>()

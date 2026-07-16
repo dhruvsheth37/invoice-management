@@ -59,11 +59,10 @@ public sealed class InvoicesController(IInvoiceService service) : ControllerBase
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? HttpContext.TraceIdentifier;
         var idempotencyKey = Request.Headers["Idempotency-Key"].FirstOrDefault() ?? string.Empty;
         var ifMatch = requireEtag ? Request.Headers["If-Match"].FirstOrDefault() : null;
-        var actor = User.FindFirst("sub")?.Value
-            ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? User.Identity?.Name;
-        if (string.IsNullOrWhiteSpace(actor))
-            throw new TenantAccessException("The authenticated identity does not contain a stable subject claim.");
-        return new(actor, correlationId, idempotencyKey, ifMatch);
+        var userClaim = User.FindFirst("user_id")?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userClaim, out var userId) || userId <= 0)
+            throw new TenantAccessException("The authenticated identity does not contain a valid integer user_id claim.");
+        return new(userId, correlationId, idempotencyKey, ifMatch);
     }
 }

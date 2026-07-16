@@ -12,7 +12,14 @@ public sealed class GlobalExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
-    public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
+    private static readonly Action<ILogger, object?, string?, Exception?> UnexpectedError =
+        LoggerMessage.Define<object?, string?>(LogLevel.Error, new EventId(3001, nameof(UnexpectedError)),
+            "Unhandled request exception for tenant {TenantId} and user {UserId}");
+    private static readonly Action<ILogger, string, object?, string?, Exception?> RequestRejected =
+        LoggerMessage.Define<string, object?, string?>(LogLevel.Warning, new EventId(3002, nameof(RequestRejected)),
+            "Request rejected with {ErrorCode} for tenant {TenantId} and user {UserId}");
+
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
         var (status, code, title, detail) = exception switch
         {
@@ -25,30 +32,28 @@ public sealed class GlobalExceptionHandler(
         };
 
         if (status >= 500)
-            logger.LogError(exception, "Unhandled request exception for tenant {TenantId} and user {UserId}",
-                context.Items["TenantId"], context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            UnexpectedError(logger, httpContext.Items["TenantId"], httpContext.User.FindFirst("user_id")?.Value, exception);
         else
-            logger.LogWarning(exception, "Request rejected with {ErrorCode} for tenant {TenantId} and user {UserId}",
-                code, context.Items["TenantId"], context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+            RequestRejected(logger, code, httpContext.Items["TenantId"], httpContext.User.FindFirst("user_id")?.Value, exception);
 
-        context.Response.StatusCode = status;
+        httpContext.Response.StatusCode = status;
         var problem = new ProblemDetails
         {
             Status = status,
             Title = title,
             Detail = detail,
-            Instance = context.Request.Path,
+            Instance = httpContext.Request.Path,
             Extensions =
             {
                 ["errorCode"] = code,
-                ["traceId"] = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier,
-                ["correlationId"] = context.Items["CorrelationId"]?.ToString(),
+                ["traceId"] = Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier,
+                ["correlationId"] = httpContext.Items["CorrelationId"]?.ToString(),
             },
         };
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
-            HttpContext = context,
+            HttpContext = httpContext,
             ProblemDetails = problem,
             Exception = exception,
         });
