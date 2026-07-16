@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.idea/
+.vs/
+.vscode/
+TestResults/
+*.user
+*.suo
+*.db
+*.log
+.env
+.nuget-offline.config
+.nuget-feed/
+.packages/
+.DS_Store

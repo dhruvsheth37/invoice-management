@@ -19,9 +19,6 @@ erDiagram
         nvarchar TaxNumber
         nvarchar Email
         bit IsActive
-        bit IsDeleted
-        datetime2 DeletedUtc
-        nvarchar DeletedBy
         datetime2 CreatedUtc
         rowversion RowVersion
     }
@@ -35,9 +32,6 @@ erDiagram
         nvarchar City
         char CountryCode
         bit IsActive
-        bit IsDeleted
-        datetime2 DeletedUtc
-        nvarchar DeletedBy
         datetime2 CreatedUtc
         rowversion RowVersion
     }
@@ -64,9 +58,7 @@ erDiagram
         decimal Subtotal
         decimal TaxTotal
         decimal Total
-        bit IsDeleted
-        datetime2 DeletedUtc
-        nvarchar DeletedBy
+        bit IsActive
         datetime2 ValidFromUtc
         datetime2 ValidToUtc
         rowversion RowVersion
@@ -84,9 +76,7 @@ erDiagram
         decimal NetAmount
         decimal TaxAmount
         decimal TotalAmount
-        bit IsDeleted
-        datetime2 DeletedUtc
-        nvarchar DeletedBy
+        bit IsActive
         datetime2 ValidFromUtc
         datetime2 ValidToUtc
         rowversion RowVersion
@@ -129,7 +119,7 @@ erDiagram
     INVOICES_HISTORY {
         uniqueidentifier Id
         uniqueidentifier TenantId
-        bit IsDeleted
+        bit IsActive
         datetime2 ValidFromUtc
         datetime2 ValidToUtc
     }
@@ -138,7 +128,7 @@ erDiagram
         uniqueidentifier Id
         uniqueidentifier TenantId
         uniqueidentifier InvoiceId
-        bit IsDeleted
+        bit IsActive
         datetime2 ValidFromUtc
         datetime2 ValidToUtc
     }

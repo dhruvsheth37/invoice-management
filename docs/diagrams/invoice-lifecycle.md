@@ -5,7 +5,7 @@ stateDiagram-v2
     [*] --> Draft: Create invoice
     Draft --> Issued: Issue
     Draft --> Void: Void with reason
-    Draft --> [*]: Soft-delete (future admin operation)
+    Draft --> [*]: Deactivate (future admin operation)
     Issued --> Paid: Confirm external payment
     Issued --> Void: Void with reason
     Paid --> [*]
@@ -13,7 +13,7 @@ stateDiagram-v2
 
     note right of Draft
       Financial fields and lines are editable.
-      IsDeleted may only be set while Draft.
+      IsActive may only be cleared while Draft.
     end note
 
     note right of Issued
@@ -22,4 +22,4 @@ stateDiagram-v2
     end note
 ```
 
-The assessment does not expose the soft-delete transition as an API endpoint. The state is shown to make the database policy explicit.
+The assessment does not expose the deactivation transition as an API endpoint. The state is shown to make the database policy explicit.

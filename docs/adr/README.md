@@ -8,6 +8,6 @@
 | [004](004-selective-temporal-tables.md) | Selective temporal tables | Proposed |
 | [005](005-business-status-operations.md) | Business lifecycle operations | Proposed |
 | [006](006-correlation-and-idempotency.md) | Separate trace, correlation, and idempotency concerns | Proposed |
-| [007](007-soft-deletion.md) | Restricted soft deletion for business entities | Proposed |
+| [007](007-record-activation.md) | Single active-record flag for business entities | Accepted |
 
 An ADR becomes Accepted after the Phase 1 review. Accepted records are not rewritten to hide later changes; a new ADR supersedes an earlier decision.
