@@ -2,7 +2,7 @@ using InvoiceManagement.Domain.Common;
 
 namespace InvoiceManagement.Domain.Invoices;
 
-public sealed class Invoice : SoftDeletableTenantEntity
+public sealed class Invoice : ActivatableTenantEntity
 {
     private readonly List<InvoiceLineItem> _lineItems = [];
     private readonly List<InvoiceStatusHistory> _statusHistory = [];
@@ -125,7 +125,7 @@ public sealed class Invoice : SoftDeletableTenantEntity
         string modifiedBy)
     {
         EnsureDraft();
-        if (_lineItems.Any(line => !line.IsDeleted && line.LineNumber == lineNumber))
+        if (_lineItems.Any(line => line.IsActive && line.LineNumber == lineNumber))
         {
             throw new DomainException("invoice.line_number_duplicate", "Invoice line number must be unique.");
         }
@@ -156,7 +156,7 @@ public sealed class Invoice : SoftDeletableTenantEntity
         string correlationId)
     {
         EnsureDraft();
-        if (!_lineItems.Any(line => !line.IsDeleted))
+        if (!_lineItems.Any(line => line.IsActive))
         {
             throw new DomainException("invoice.lines_required", "An invoice requires at least one line item.");
         }
@@ -215,15 +215,15 @@ public sealed class Invoice : SoftDeletableTenantEntity
         TransitionTo(InvoiceStatus.Void, VoidReason, changedUtc, changedBy, correlationId);
     }
 
-    public void SoftDeleteDraft(DateTime deletedUtc, string deletedBy)
+    public void DeactivateDraft(DateTime modifiedUtc, string modifiedBy)
     {
         EnsureDraft();
-        foreach (var line in _lineItems.Where(line => !line.IsDeleted))
+        foreach (var line in _lineItems.Where(line => line.IsActive))
         {
-            line.SoftDelete(deletedUtc, deletedBy);
+            line.Deactivate(modifiedUtc, modifiedBy);
         }
 
-        MarkDeleted(deletedUtc, deletedBy);
+        MarkInactive(modifiedUtc, modifiedBy);
     }
 
     private void ApplyBillTo(BillToSnapshot billTo)
@@ -272,7 +272,7 @@ public sealed class Invoice : SoftDeletableTenantEntity
 
     private void RecalculateTotals()
     {
-        var activeLines = _lineItems.Where(line => !line.IsDeleted);
+        var activeLines = _lineItems.Where(line => line.IsActive);
         Subtotal = activeLines.Sum(line => line.NetAmount);
         TaxTotal = activeLines.Sum(line => line.TaxAmount);
         Total = Subtotal + TaxTotal;
@@ -280,7 +280,7 @@ public sealed class Invoice : SoftDeletableTenantEntity
 
     private void EnsureDraft()
     {
-        if (Status != InvoiceStatus.Draft || IsDeleted)
+        if (Status != InvoiceStatus.Draft || !IsActive)
         {
             throw new DomainException("invoice.not_editable", "Only an active draft invoice can be changed.");
         }

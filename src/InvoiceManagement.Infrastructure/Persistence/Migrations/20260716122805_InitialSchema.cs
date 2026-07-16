@@ -57,22 +57,18 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     LegalName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     TaxNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(254)", maxLength: 254, nullable: true),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     CreatedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: false),
                     CreatedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     ModifiedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: true),
                     ModifiedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    DeletedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: true),
-                    DeletedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Customers", x => x.Id);
                     table.UniqueConstraint("AK_Customers_TenantId_Id", x => new { x.TenantId, x.Id });
-                    table.CheckConstraint("CK_Customers_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
                     table.ForeignKey(
                         name: "FK_Customers_Tenants_TenantId",
                         column: x => x.TenantId,
@@ -143,23 +139,19 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     PostalCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     CountryCode = table.Column<string>(type: "char(2)", nullable: false),
                     TaxNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     CreatedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: false),
                     CreatedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     ModifiedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: true),
                     ModifiedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    DeletedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: true),
-                    DeletedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CustomerLocations", x => x.Id);
                     table.UniqueConstraint("AK_CustomerLocations_TenantId_CustomerId_Id", x => new { x.TenantId, x.CustomerId, x.Id });
                     table.UniqueConstraint("AK_CustomerLocations_TenantId_Id", x => new { x.TenantId, x.Id });
-                    table.CheckConstraint("CK_CustomerLocations_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
                     table.ForeignKey(
                         name: "FK_CustomerLocations_Customers_TenantId_CustomerId",
                         columns: x => new { x.TenantId, x.CustomerId },
@@ -205,9 +197,7 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     ModifiedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    DeletedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: true),
-                    DeletedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
@@ -215,7 +205,7 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     table.UniqueConstraint("AK_Invoices_TenantId_Id", x => new { x.TenantId, x.Id });
                     table.CheckConstraint("CK_Invoices_Amounts", "[Subtotal] >= 0 AND [TaxTotal] >= 0 AND [Total] >= 0 AND [Total] = [Subtotal] + [TaxTotal]");
                     table.CheckConstraint("CK_Invoices_Dates", "[DueDate] IS NULL OR [IssueDate] IS NULL OR [DueDate] >= [IssueDate]");
-                    table.CheckConstraint("CK_Invoices_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [StatusId] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
+                    table.CheckConstraint("CK_Invoices_Deactivation", "[IsActive] = 1 OR [StatusId] = 1");
                     table.CheckConstraint("CK_Invoices_Draft", "[StatusId] <> 1 OR ([InvoiceNumber] IS NULL AND [IssueDate] IS NULL AND [PaidDate] IS NULL)");
                     table.CheckConstraint("CK_Invoices_IssuedSnapshot", "[StatusId] NOT IN (2, 3) OR ([InvoiceNumber] IS NOT NULL AND [IssueDate] IS NOT NULL AND [DueDate] IS NOT NULL AND [BillToCustomerCode] IS NOT NULL AND [BillToLegalName] IS NOT NULL AND [BillToAddressLine1] IS NOT NULL AND [BillToCity] IS NOT NULL AND [BillToCountryCode] IS NOT NULL)");
                     table.CheckConstraint("CK_Invoices_Paid", "([StatusId] = 3 AND [PaidDate] IS NOT NULL) OR ([StatusId] <> 3 AND [PaidDate] IS NULL)");
@@ -271,16 +261,13 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     ModifiedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    DeletedUtc = table.Column<DateTime>(type: "datetime2(7)", nullable: true),
-                    DeletedBy = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_InvoiceLineItems", x => x.Id);
                     table.UniqueConstraint("AK_InvoiceLineItems_TenantId_Id", x => new { x.TenantId, x.Id });
                     table.CheckConstraint("CK_InvoiceLineItems_Amounts", "[NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]");
-                    table.CheckConstraint("CK_InvoiceLineItems_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
                     table.CheckConstraint("CK_InvoiceLineItems_Values", "[LineNumber] > 0 AND [Quantity] > 0 AND [UnitPrice] >= 0 AND [TaxRate] >= 0 AND [TaxRate] <= 1");
                     table.ForeignKey(
                         name: "FK_InvoiceLineItems_Invoices_TenantId_InvoiceId",
@@ -349,19 +336,19 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                 table: "CustomerLocations",
                 columns: new[] { "TenantId", "CustomerId", "Name" },
                 unique: true,
-                filter: "[IsDeleted] = 0");
+                filter: "[IsActive] = 1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customers_TenantId_Code",
                 table: "Customers",
                 columns: new[] { "TenantId", "Code" },
                 unique: true,
-                filter: "[IsDeleted] = 0");
+                filter: "[IsActive] = 1");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Customers_TenantId_IsDeleted_LegalName",
+                name: "IX_Customers_TenantId_IsActive_LegalName",
                 table: "Customers",
-                columns: new[] { "TenantId", "IsDeleted", "LegalName" });
+                columns: new[] { "TenantId", "IsActive", "LegalName" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_IdempotencyRequests_ExpiresUtc",
@@ -379,7 +366,7 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                 table: "InvoiceLineItems",
                 columns: new[] { "TenantId", "InvoiceId", "LineNumber" },
                 unique: true,
-                filter: "[IsDeleted] = 0");
+                filter: "[IsActive] = 1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Invoices_StatusId",
@@ -399,22 +386,22 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                 filter: "[InvoiceNumber] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Invoices_TenantId_IsDeleted_CustomerId_CreatedUtc",
+                name: "IX_Invoices_TenantId_IsActive_CustomerId_CreatedUtc",
                 table: "Invoices",
-                columns: new[] { "TenantId", "IsDeleted", "CustomerId", "CreatedUtc" },
+                columns: new[] { "TenantId", "IsActive", "CustomerId", "CreatedUtc" },
                 descending: new[] { false, false, false, true });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Invoices_TenantId_IsDeleted_StatusId_CreatedUtc_Id",
+                name: "IX_Invoices_TenantId_IsActive_StatusId_CreatedUtc_Id",
                 table: "Invoices",
-                columns: new[] { "TenantId", "IsDeleted", "StatusId", "CreatedUtc", "Id" },
+                columns: new[] { "TenantId", "IsActive", "StatusId", "CreatedUtc", "Id" },
                 descending: new[] { false, false, false, true, true })
                 .Annotation("SqlServer:Include", new[] { "InvoiceNumber", "CustomerId", "Total", "CurrencyCode", "DueDate" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Invoices_TenantId_IsDeleted_StatusId_DueDate",
+                name: "IX_Invoices_TenantId_IsActive_StatusId_DueDate",
                 table: "Invoices",
-                columns: new[] { "TenantId", "IsDeleted", "StatusId", "DueDate" })
+                columns: new[] { "TenantId", "IsActive", "StatusId", "DueDate" })
                 .Annotation("SqlServer:Include", new[] { "CurrencyCode", "Total" });
 
             migrationBuilder.CreateIndex(

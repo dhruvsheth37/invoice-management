@@ -2,7 +2,7 @@ using InvoiceManagement.Domain.Common;
 
 namespace InvoiceManagement.Domain.Customers;
 
-public sealed class CustomerLocation : SoftDeletableTenantEntity
+public sealed class CustomerLocation : ActivatableTenantEntity
 {
     private CustomerLocation()
     {
@@ -28,7 +28,6 @@ public sealed class CustomerLocation : SoftDeletableTenantEntity
         PostalCode = address.PostalCode;
         CountryCode = address.CountryCode;
         TaxNumber = taxNumber;
-        IsActive = true;
     }
 
     public Guid CustomerId { get; private set; }
@@ -48,8 +47,6 @@ public sealed class CustomerLocation : SoftDeletableTenantEntity
     public string CountryCode { get; private set; } = string.Empty;
 
     public string? TaxNumber { get; private set; }
-
-    public bool IsActive { get; private set; }
 
     public static CustomerLocation Create(
         Guid id,
@@ -77,5 +74,5 @@ public sealed class CustomerLocation : SoftDeletableTenantEntity
             createdBy);
     }
 
-    public void SoftDelete(DateTime deletedUtc, string deletedBy) => MarkDeleted(deletedUtc, deletedBy);
+    public void Deactivate(DateTime modifiedUtc, string modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
 }

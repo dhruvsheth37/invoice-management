@@ -24,7 +24,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             table.HasCheckConstraint("CK_Invoices_Paid", "([StatusId] = 3 AND [PaidDate] IS NOT NULL) OR ([StatusId] <> 3 AND [PaidDate] IS NULL)");
             table.HasCheckConstraint("CK_Invoices_Void", "([StatusId] = 4 AND [VoidReason] IS NOT NULL) OR ([StatusId] <> 4 AND [VoidReason] IS NULL)");
             table.HasCheckConstraint("CK_Invoices_IssuedSnapshot", "[StatusId] NOT IN (2, 3) OR ([InvoiceNumber] IS NOT NULL AND [IssueDate] IS NOT NULL AND [DueDate] IS NOT NULL AND [BillToCustomerCode] IS NOT NULL AND [BillToLegalName] IS NOT NULL AND [BillToAddressLine1] IS NOT NULL AND [BillToCity] IS NOT NULL AND [BillToCountryCode] IS NOT NULL)");
-            table.HasCheckConstraint("CK_Invoices_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [StatusId] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
+            table.HasCheckConstraint("CK_Invoices_Deactivation", "[IsActive] = 1 OR [StatusId] = 1");
         });
 
         builder.HasKey(entity => entity.Id);
@@ -48,7 +48,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(entity => entity.Notes).HasMaxLength(1000);
         builder.Property(entity => entity.VoidReason).HasMaxLength(500);
         builder.ConfigureAudit();
-        builder.ConfigureSoftDeletion();
+        builder.ConfigureActivation();
 
         builder.HasOne<Tenant>()
             .WithMany()
@@ -86,12 +86,12 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasIndex(entity => new { entity.TenantId, entity.InvoiceNumber })
             .IsUnique()
             .HasFilter("[InvoiceNumber] IS NOT NULL");
-        builder.HasIndex(entity => new { entity.TenantId, entity.IsDeleted, entity.Status, entity.CreatedUtc, entity.Id })
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.Status, entity.CreatedUtc, entity.Id })
             .IsDescending(false, false, false, true, true)
             .IncludeProperties(entity => new { entity.InvoiceNumber, entity.CustomerId, entity.Total, entity.CurrencyCode, entity.DueDate });
-        builder.HasIndex(entity => new { entity.TenantId, entity.IsDeleted, entity.CustomerId, entity.CreatedUtc })
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.CustomerId, entity.CreatedUtc })
             .IsDescending(false, false, false, true);
-        builder.HasIndex(entity => new { entity.TenantId, entity.IsDeleted, entity.Status, entity.DueDate })
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.Status, entity.DueDate })
             .IncludeProperties(entity => new { entity.CurrencyCode, entity.Total });
     }
 }

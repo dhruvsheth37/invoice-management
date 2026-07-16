@@ -9,7 +9,7 @@ A query filter alone can be bypassed, and application-only foreign-key validatio
 
 ## Decision
 
-Resolve tenant context from trusted authentication claims in production, apply EF Core tenant/global soft-delete filters, and use tenant-leading alternate keys and composite foreign keys in SQL Server. Allow `X-Tenant-Id` only in Development and tests.
+Resolve tenant context from trusted authentication claims in production, apply EF Core tenant/active-record filters, and use tenant-leading alternate keys and composite foreign keys in SQL Server. Allow `X-Tenant-Id` only in Development and tests.
 
 ## Consequences
 

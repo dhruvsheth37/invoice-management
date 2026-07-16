@@ -39,7 +39,7 @@ The server returns `X-Correlation-ID`, `traceparent` context through standard in
 
 There is no generic `PATCH /status`. Each lifecycle route expresses a business operation and validates allowed transitions.
 
-No delete endpoint is implemented. The schema contains soft-deletion metadata so retention rules can be implemented later; any future invoice deletion operation must be limited to Draft invoices.
+No delete endpoint is implemented. Business records use `IsActive`; any future invoice deactivation operation must be limited to Draft invoices.
 
 ## 4. Create draft
 
@@ -100,7 +100,7 @@ Rules:
 - Default sort: `createdUtc` descending, then `id` descending for stability.
 - Supported sorts are allow-listed.
 - Query uses `AsNoTracking` and DTO projection.
-- Deleted rows are excluded.
+- Inactive rows are excluded.
 
 ```json
 {

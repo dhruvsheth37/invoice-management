@@ -9,11 +9,7 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
-        builder.ToTable("Customers", table =>
-            table.HasCheckConstraint(
-                "CK_Customers_DeletionMetadata",
-                "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR " +
-                "([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)"));
+        builder.ToTable("Customers");
 
         builder.HasKey(entity => entity.Id);
         builder.HasAlternateKey(entity => new { entity.TenantId, entity.Id });
@@ -21,9 +17,8 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(entity => entity.LegalName).HasMaxLength(200).IsRequired();
         builder.Property(entity => entity.TaxNumber).HasMaxLength(50);
         builder.Property(entity => entity.Email).HasMaxLength(254);
-        builder.Property(entity => entity.IsActive).HasDefaultValue(true);
         builder.ConfigureAudit();
-        builder.ConfigureSoftDeletion();
+        builder.ConfigureActivation();
 
         builder.HasOne<Tenant>()
             .WithMany()
@@ -32,7 +27,7 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.HasIndex(entity => new { entity.TenantId, entity.Code })
             .IsUnique()
-            .HasFilter("[IsDeleted] = 0");
-        builder.HasIndex(entity => new { entity.TenantId, entity.IsDeleted, entity.LegalName });
+            .HasFilter("[IsActive] = 1");
+        builder.HasIndex(entity => new { entity.TenantId, entity.IsActive, entity.LegalName });
     }
 }

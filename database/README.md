@@ -19,7 +19,7 @@ dotnet tool restore
 dotnet ef migrations script \
   --idempotent \
   --project src/InvoiceManagement.Infrastructure \
-  --startup-project src/InvoiceManagement.Api \
+  --startup-project src/InvoiceManagement.Infrastructure \
   --output database/generated/InvoiceManagement_Idempotent.sql
 ```
 

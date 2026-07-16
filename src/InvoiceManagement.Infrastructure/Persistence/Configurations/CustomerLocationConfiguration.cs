@@ -8,11 +8,7 @@ internal sealed class CustomerLocationConfiguration : IEntityTypeConfiguration<C
 {
     public void Configure(EntityTypeBuilder<CustomerLocation> builder)
     {
-        builder.ToTable("CustomerLocations", table =>
-            table.HasCheckConstraint(
-                "CK_CustomerLocations_DeletionMetadata",
-                "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR " +
-                "([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)"));
+        builder.ToTable("CustomerLocations");
 
         builder.HasKey(entity => entity.Id);
         builder.HasAlternateKey(entity => new { entity.TenantId, entity.CustomerId, entity.Id });
@@ -25,9 +21,8 @@ internal sealed class CustomerLocationConfiguration : IEntityTypeConfiguration<C
         builder.Property(entity => entity.PostalCode).HasMaxLength(20);
         builder.Property(entity => entity.CountryCode).HasColumnType("char(2)").IsRequired();
         builder.Property(entity => entity.TaxNumber).HasMaxLength(50);
-        builder.Property(entity => entity.IsActive).HasDefaultValue(true);
         builder.ConfigureAudit();
-        builder.ConfigureSoftDeletion();
+        builder.ConfigureActivation();
 
         builder.HasOne<Customer>()
             .WithMany()
@@ -37,6 +32,6 @@ internal sealed class CustomerLocationConfiguration : IEntityTypeConfiguration<C
 
         builder.HasIndex(entity => new { entity.TenantId, entity.CustomerId, entity.Name })
             .IsUnique()
-            .HasFilter("[IsDeleted] = 0");
+            .HasFilter("[IsActive] = 1");
     }
 }

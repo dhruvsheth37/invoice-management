@@ -2,7 +2,7 @@ using InvoiceManagement.Domain.Common;
 
 namespace InvoiceManagement.Domain.Customers;
 
-public sealed class Customer : SoftDeletableTenantEntity
+public sealed class Customer : ActivatableTenantEntity
 {
     private Customer()
     {
@@ -23,7 +23,6 @@ public sealed class Customer : SoftDeletableTenantEntity
         LegalName = legalName;
         TaxNumber = taxNumber;
         Email = email;
-        IsActive = true;
     }
 
     public string Code { get; private set; } = string.Empty;
@@ -33,8 +32,6 @@ public sealed class Customer : SoftDeletableTenantEntity
     public string? TaxNumber { get; private set; }
 
     public string? Email { get; private set; }
-
-    public bool IsActive { get; private set; }
 
     public static Customer Create(
         Guid id,
@@ -62,7 +59,7 @@ public sealed class Customer : SoftDeletableTenantEntity
             createdBy);
     }
 
-    public void SoftDelete(DateTime deletedUtc, string deletedBy) => MarkDeleted(deletedUtc, deletedBy);
+    public void Deactivate(DateTime modifiedUtc, string modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

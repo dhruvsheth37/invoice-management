@@ -38,19 +38,15 @@ CREATE TABLE [Customers] (
     [LegalName] nvarchar(200) NOT NULL,
     [TaxNumber] nvarchar(50) NULL,
     [Email] nvarchar(254) NULL,
-    [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
     [CreatedUtc] datetime2(7) NOT NULL,
     [CreatedBy] nvarchar(200) NOT NULL,
     [ModifiedUtc] datetime2(7) NULL,
     [ModifiedBy] nvarchar(200) NULL,
     [RowVersion] rowversion NOT NULL,
     [TenantId] uniqueidentifier NOT NULL,
-    [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-    [DeletedUtc] datetime2(7) NULL,
-    [DeletedBy] nvarchar(200) NULL,
+    [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
     CONSTRAINT [PK_Customers] PRIMARY KEY ([Id]),
     CONSTRAINT [AK_Customers_TenantId_Id] UNIQUE ([TenantId], [Id]),
-    CONSTRAINT [CK_Customers_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
     CONSTRAINT [FK_Customers_Tenants_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [Tenants] ([Id])
 );
 
@@ -94,20 +90,16 @@ CREATE TABLE [CustomerLocations] (
     [PostalCode] nvarchar(20) NULL,
     [CountryCode] char(2) NOT NULL,
     [TaxNumber] nvarchar(50) NULL,
-    [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
     [CreatedUtc] datetime2(7) NOT NULL,
     [CreatedBy] nvarchar(200) NOT NULL,
     [ModifiedUtc] datetime2(7) NULL,
     [ModifiedBy] nvarchar(200) NULL,
     [RowVersion] rowversion NOT NULL,
     [TenantId] uniqueidentifier NOT NULL,
-    [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-    [DeletedUtc] datetime2(7) NULL,
-    [DeletedBy] nvarchar(200) NULL,
+    [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
     CONSTRAINT [PK_CustomerLocations] PRIMARY KEY ([Id]),
     CONSTRAINT [AK_CustomerLocations_TenantId_CustomerId_Id] UNIQUE ([TenantId], [CustomerId], [Id]),
     CONSTRAINT [AK_CustomerLocations_TenantId_Id] UNIQUE ([TenantId], [Id]),
-    CONSTRAINT [CK_CustomerLocations_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
     CONSTRAINT [FK_CustomerLocations_Customers_TenantId_CustomerId] FOREIGN KEY ([TenantId], [CustomerId]) REFERENCES [Customers] ([TenantId], [Id])
 );
 
@@ -146,14 +138,12 @@ CREATE TABLE [Invoices] (
     [ModifiedBy] nvarchar(200) NULL,
     [RowVersion] rowversion NOT NULL,
     [TenantId] uniqueidentifier NOT NULL,
-    [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-    [DeletedUtc] datetime2(7) NULL,
-    [DeletedBy] nvarchar(200) NULL,
+    [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
     CONSTRAINT [PK_Invoices] PRIMARY KEY ([Id]),
     CONSTRAINT [AK_Invoices_TenantId_Id] UNIQUE ([TenantId], [Id]),
     CONSTRAINT [CK_Invoices_Amounts] CHECK ([Subtotal] >= 0 AND [TaxTotal] >= 0 AND [Total] >= 0 AND [Total] = [Subtotal] + [TaxTotal]),
     CONSTRAINT [CK_Invoices_Dates] CHECK ([DueDate] IS NULL OR [IssueDate] IS NULL OR [DueDate] >= [IssueDate]),
-    CONSTRAINT [CK_Invoices_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [StatusId] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
+    CONSTRAINT [CK_Invoices_Deactivation] CHECK ([IsActive] = 1 OR [StatusId] = 1),
     CONSTRAINT [CK_Invoices_Draft] CHECK ([StatusId] <> 1 OR ([InvoiceNumber] IS NULL AND [IssueDate] IS NULL AND [PaidDate] IS NULL)),
     CONSTRAINT [CK_Invoices_IssuedSnapshot] CHECK ([StatusId] NOT IN (2, 3) OR ([InvoiceNumber] IS NOT NULL AND [IssueDate] IS NOT NULL AND [DueDate] IS NOT NULL AND [BillToCustomerCode] IS NOT NULL AND [BillToLegalName] IS NOT NULL AND [BillToAddressLine1] IS NOT NULL AND [BillToCity] IS NOT NULL AND [BillToCountryCode] IS NOT NULL)),
     CONSTRAINT [CK_Invoices_Paid] CHECK (([StatusId] = 3 AND [PaidDate] IS NOT NULL) OR ([StatusId] <> 3 AND [PaidDate] IS NULL)),
@@ -184,13 +174,10 @@ CREATE TABLE [InvoiceLineItems] (
     [ModifiedBy] nvarchar(200) NULL,
     [RowVersion] rowversion NOT NULL,
     [TenantId] uniqueidentifier NOT NULL,
-    [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-    [DeletedUtc] datetime2(7) NULL,
-    [DeletedBy] nvarchar(200) NULL,
+    [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
     CONSTRAINT [PK_InvoiceLineItems] PRIMARY KEY ([Id]),
     CONSTRAINT [AK_InvoiceLineItems_TenantId_Id] UNIQUE ([TenantId], [Id]),
     CONSTRAINT [CK_InvoiceLineItems_Amounts] CHECK ([NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]),
-    CONSTRAINT [CK_InvoiceLineItems_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
     CONSTRAINT [CK_InvoiceLineItems_Values] CHECK ([LineNumber] > 0 AND [Quantity] > 0 AND [UnitPrice] >= 0 AND [TaxRate] >= 0 AND [TaxRate] <= 1),
     CONSTRAINT [FK_InvoiceLineItems_Invoices_TenantId_InvoiceId] FOREIGN KEY ([TenantId], [InvoiceId]) REFERENCES [Invoices] ([TenantId], [Id]),
     PERIOD FOR SYSTEM_TIME([ValidFromUtc], [ValidToUtc])
@@ -229,17 +216,17 @@ VALUES ('11111111-1111-1111-1111-111111111111', N'seed', '2026-01-01T00:00:00.00
 IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedBy', N'CreatedUtc', N'IsActive', N'ModifiedBy', N'ModifiedUtc', N'Name', N'Slug') AND [object_id] = OBJECT_ID(N'[Tenants]'))
     SET IDENTITY_INSERT [Tenants] OFF;
 
-CREATE UNIQUE INDEX [IX_CustomerLocations_TenantId_CustomerId_Name] ON [CustomerLocations] ([TenantId], [CustomerId], [Name]) WHERE [IsDeleted] = 0;
+CREATE UNIQUE INDEX [IX_CustomerLocations_TenantId_CustomerId_Name] ON [CustomerLocations] ([TenantId], [CustomerId], [Name]) WHERE [IsActive] = 1;
 
-CREATE UNIQUE INDEX [IX_Customers_TenantId_Code] ON [Customers] ([TenantId], [Code]) WHERE [IsDeleted] = 0;
+CREATE UNIQUE INDEX [IX_Customers_TenantId_Code] ON [Customers] ([TenantId], [Code]) WHERE [IsActive] = 1;
 
-CREATE INDEX [IX_Customers_TenantId_IsDeleted_LegalName] ON [Customers] ([TenantId], [IsDeleted], [LegalName]);
+CREATE INDEX [IX_Customers_TenantId_IsActive_LegalName] ON [Customers] ([TenantId], [IsActive], [LegalName]);
 
 CREATE INDEX [IX_IdempotencyRequests_ExpiresUtc] ON [IdempotencyRequests] ([ExpiresUtc]);
 
 CREATE UNIQUE INDEX [IX_IdempotencyRequests_TenantId_Operation_IdempotencyKey] ON [IdempotencyRequests] ([TenantId], [Operation], [IdempotencyKey]);
 
-CREATE UNIQUE INDEX [IX_InvoiceLineItems_TenantId_InvoiceId_LineNumber] ON [InvoiceLineItems] ([TenantId], [InvoiceId], [LineNumber]) WHERE [IsDeleted] = 0;
+CREATE UNIQUE INDEX [IX_InvoiceLineItems_TenantId_InvoiceId_LineNumber] ON [InvoiceLineItems] ([TenantId], [InvoiceId], [LineNumber]) WHERE [IsActive] = 1;
 
 CREATE INDEX [IX_Invoices_StatusId] ON [Invoices] ([StatusId]);
 
@@ -247,11 +234,11 @@ CREATE INDEX [IX_Invoices_TenantId_CustomerId_CustomerLocationId] ON [Invoices] 
 
 CREATE UNIQUE INDEX [IX_Invoices_TenantId_InvoiceNumber] ON [Invoices] ([TenantId], [InvoiceNumber]) WHERE [InvoiceNumber] IS NOT NULL;
 
-CREATE INDEX [IX_Invoices_TenantId_IsDeleted_CustomerId_CreatedUtc] ON [Invoices] ([TenantId], [IsDeleted], [CustomerId], [CreatedUtc] DESC);
+CREATE INDEX [IX_Invoices_TenantId_IsActive_CustomerId_CreatedUtc] ON [Invoices] ([TenantId], [IsActive], [CustomerId], [CreatedUtc] DESC);
 
-CREATE INDEX [IX_Invoices_TenantId_IsDeleted_StatusId_CreatedUtc_Id] ON [Invoices] ([TenantId], [IsDeleted], [StatusId], [CreatedUtc] DESC, [Id] DESC) INCLUDE ([InvoiceNumber], [CustomerId], [Total], [CurrencyCode], [DueDate]);
+CREATE INDEX [IX_Invoices_TenantId_IsActive_StatusId_CreatedUtc_Id] ON [Invoices] ([TenantId], [IsActive], [StatusId], [CreatedUtc] DESC, [Id] DESC) INCLUDE ([InvoiceNumber], [CustomerId], [Total], [CurrencyCode], [DueDate]);
 
-CREATE INDEX [IX_Invoices_TenantId_IsDeleted_StatusId_DueDate] ON [Invoices] ([TenantId], [IsDeleted], [StatusId], [DueDate]) INCLUDE ([CurrencyCode], [Total]);
+CREATE INDEX [IX_Invoices_TenantId_IsActive_StatusId_DueDate] ON [Invoices] ([TenantId], [IsActive], [StatusId], [DueDate]) INCLUDE ([CurrencyCode], [Total]);
 
 CREATE UNIQUE INDEX [IX_InvoiceStatuses_Code] ON [InvoiceStatuses] ([Code]);
 
@@ -264,7 +251,7 @@ CREATE INDEX [IX_InvoiceStatusHistory_ToStatusId] ON [InvoiceStatusHistory] ([To
 CREATE UNIQUE INDEX [IX_Tenants_Slug] ON [Tenants] ([Slug]);
 
 INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-VALUES (N'20260716112720_InitialSchema', N'10.0.9');
+VALUES (N'20260716122805_InitialSchema', N'10.0.9');
 
 COMMIT;
 GO

@@ -10,7 +10,7 @@ namespace InvoiceManagement.IntegrationTests.Persistence;
 public sealed class PersistenceModelTests
 {
     [Fact]
-    public void Invoice_and_line_item_are_temporal_and_soft_deletable()
+    public void Invoice_and_line_item_are_temporal_and_activatable()
     {
         using var context = CreateContext();
         var invoice = context.Model.FindEntityType(typeof(Invoice));
@@ -20,8 +20,10 @@ public sealed class PersistenceModelTests
         Assert.NotNull(lineItem);
         Assert.True(invoice.IsTemporal());
         Assert.True(lineItem.IsTemporal());
-        Assert.NotNull(invoice.FindProperty(nameof(Invoice.IsDeleted)));
-        Assert.NotNull(lineItem.FindProperty(nameof(InvoiceLineItem.IsDeleted)));
+        Assert.NotNull(invoice.FindProperty(nameof(Invoice.IsActive)));
+        Assert.NotNull(lineItem.FindProperty(nameof(InvoiceLineItem.IsActive)));
+        Assert.Null(invoice.FindProperty("IsDeleted"));
+        Assert.Null(lineItem.FindProperty("IsDeleted"));
     }
 
     [Fact]

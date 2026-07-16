@@ -48,13 +48,13 @@ public sealed class InvoiceDbContext(
         modelBuilder.Entity<Tenant>()
             .HasQueryFilter(entity => entity.Id == CurrentTenantId);
         modelBuilder.Entity<Customer>()
-            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && !entity.IsDeleted);
+            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && entity.IsActive);
         modelBuilder.Entity<CustomerLocation>()
-            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && !entity.IsDeleted);
+            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && entity.IsActive);
         modelBuilder.Entity<Invoice>()
-            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && !entity.IsDeleted);
+            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && entity.IsActive);
         modelBuilder.Entity<InvoiceLineItem>()
-            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && !entity.IsDeleted);
+            .HasQueryFilter(entity => entity.TenantId == CurrentTenantId && entity.IsActive);
         modelBuilder.Entity<InvoiceStatusHistory>()
             .HasQueryFilter(entity => entity.TenantId == CurrentTenantId);
         modelBuilder.Entity<InvoiceNumberSequence>()

@@ -36,32 +36,21 @@ Applied to mutable tenant-owned business tables:
 | `ModifiedBy` | `nvarchar(200)` | Yes | Actor responsible for last mutation |
 | `RowVersion` | `rowversion` | No | Optimistic concurrency token |
 
-### Soft-deletion metadata
+### Record activation
 
 Applied to `Customers`, `CustomerLocations`, `Invoices`, and `InvoiceLineItems`:
 
 | Column | SQL type | Null | Default |
 |---|---|---:|---|
-| `IsDeleted` | `bit` | No | `0` |
-| `DeletedUtc` | `datetime2(7)` | Yes | None |
-| `DeletedBy` | `nvarchar(200)` | Yes | None |
+| `IsActive` | `bit` | No | `1` |
 
-Check constraint pattern:
-
-```sql
-CHECK (
-    (IsDeleted = 0 AND DeletedUtc IS NULL AND DeletedBy IS NULL)
- OR (IsDeleted = 1 AND DeletedUtc IS NOT NULL AND DeletedBy IS NOT NULL)
-)
-```
-
-Only Draft invoices and their line items may be soft-deleted. Issued financial records are retained and voided.
+Only Draft invoices and their line items may be deactivated. Issued financial records remain active and are voided. `ModifiedUtc` and `ModifiedBy` identify the latest mutation; no deletion-specific columns are stored.
 
 ## 4. Tables
 
 ### 4.1 `Tenants`
 
-Tenant registry. Tenant retirement uses `IsActive`; it is not a normal soft-delete operation.
+Tenant registry. Tenant retirement also uses `IsActive`.
 
 | Column | SQL type | Null | Notes |
 |---|---|---:|---|
@@ -93,14 +82,13 @@ Keys and constraints:
 | `Email` | `nvarchar(254)` | Yes | Billing contact |
 | `IsActive` | `bit` | No | Default `1` |
 | Audit metadata |  |  | See shared columns |
-| Soft-delete metadata |  |  | See shared columns |
 
 Keys and relationships:
 
 - `PK_Customers (Id)`
 - `AK_Customers_Tenant_Id (TenantId, Id)` supports tenant-aware FKs.
 - `FK_Customers_Tenants (TenantId) -> Tenants(Id)`.
-- Active unique index on `(TenantId, Code) WHERE IsDeleted = 0`.
+- Active unique index on `(TenantId, Code) WHERE IsActive = 1`.
 
 ### 4.3 `CustomerLocations`
 
@@ -119,7 +107,6 @@ Keys and relationships:
 | `TaxNumber` | `nvarchar(50)` | Yes | Location-specific identifier |
 | `IsActive` | `bit` | No | Default `1` |
 | Audit metadata |  |  | See shared columns |
-| Soft-delete metadata |  |  | See shared columns |
 
 Keys and relationships:
 
@@ -127,7 +114,7 @@ Keys and relationships:
 - `AK_CustomerLocations_Tenant_Customer_Id (TenantId, CustomerId, Id)`.
 - `AK_CustomerLocations_Tenant_Id (TenantId, Id)` for direct tenant-aware lookups.
 - `FK_CustomerLocations_Customers (TenantId, CustomerId) -> Customers(TenantId, Id)`.
-- Active unique index on `(TenantId, CustomerId, Name) WHERE IsDeleted = 0`.
+- Active unique index on `(TenantId, CustomerId, Name) WHERE IsActive = 1`.
 
 ### 4.4 `InvoiceStatuses`
 
@@ -182,8 +169,8 @@ System-versioned temporal table with history in `history.InvoicesHistory`.
 | `Total` | `decimal(19,4)` | No | `Subtotal + TaxTotal` |
 | `Notes` | `nvarchar(1000)` | Yes | Optional |
 | `VoidReason` | `nvarchar(500)` | Yes | Required for Void |
+| `IsActive` | `bit` | No | Default `1`; only Draft may be deactivated |
 | Audit metadata |  |  | See shared columns |
-| Soft-delete metadata |  |  | Draft only |
 | `ValidFromUtc` | `datetime2(7)` | No | Hidden temporal period start |
 | `ValidToUtc` | `datetime2(7)` | No | Hidden temporal period end |
 
@@ -204,10 +191,10 @@ Important checks:
 - `DueDate IS NULL OR IssueDate IS NULL OR DueDate >= IssueDate`.
 - Draft has no invoice number or issue date.
 - Issued and Paid records require the invoice number, issue/due dates, and required bill-to snapshot fields.
-- Issued/Paid/Void records are not soft-deleted.
+- Issued/Paid/Void records cannot be deactivated.
 - Paid requires `PaidDate`; non-Paid records have no `PaidDate`.
 - Void requires `VoidReason`.
-- Soft-deletion metadata is internally consistent.
+- `IsActive = 0` is valid only for Draft records.
 
 ### 4.6 `InvoiceLineItems`
 
@@ -226,8 +213,8 @@ System-versioned temporal table with history in `history.InvoiceLineItemsHistory
 | `NetAmount` | `decimal(19,4)` | No | Rounded server calculation |
 | `TaxAmount` | `decimal(19,4)` | No | Rounded server calculation |
 | `TotalAmount` | `decimal(19,4)` | No | Net plus tax |
+| `IsActive` | `bit` | No | Default `1` |
 | Audit metadata |  |  | See shared columns |
-| Soft-delete metadata |  |  | Draft invoice only |
 | `ValidFromUtc` | `datetime2(7)` | No | Hidden temporal period start |
 | `ValidToUtc` | `datetime2(7)` | No | Hidden temporal period end |
 
@@ -236,7 +223,7 @@ Keys and relationships:
 - `PK_InvoiceLineItems (Id)`.
 - `AK_InvoiceLineItems_Tenant_Id (TenantId, Id)`.
 - `FK_InvoiceLineItems_Invoices (TenantId, InvoiceId) -> Invoices(TenantId, Id)`.
-- Active unique index `(TenantId, InvoiceId, LineNumber) WHERE IsDeleted = 0`.
+- Active unique index `(TenantId, InvoiceId, LineNumber) WHERE IsActive = 1`.
 
 Checks:
 
@@ -245,13 +232,12 @@ Checks:
 - `UnitPrice >= 0`.
 - `TaxRate BETWEEN 0 AND 1`.
 - Amounts are non-negative and internally consistent after defined rounding.
-- Soft-deletion metadata is internally consistent.
 
 Invoice totals cannot be SQL computed columns because they aggregate child rows. The domain calculates and persists line and invoice totals in one transaction.
 
 ### 4.7 `InvoiceStatusHistory`
 
-Append-only business audit log; not temporal and not soft-deleted.
+Append-only business audit log; not temporal and not subject to activation filtering.
 
 | Column | SQL type | Null | Notes |
 |---|---|---:|---|
@@ -284,7 +270,7 @@ The issue transaction atomically increments the tenant/year row and formats a nu
 
 ### 4.9 `IdempotencyRequests`
 
-Operational retry record; not soft-deleted or temporal.
+Operational retry record; not subject to activation filtering or temporal history.
 
 | Column | SQL type | Null | Notes |
 |---|---|---:|---|
@@ -310,12 +296,12 @@ Unique constraint: `(TenantId, Operation, IdempotencyKey)`.
 |---|---|---|
 | `Tenants` | Unique `(Slug)` | Tenant resolution/provisioning |
 | `Customers` | Unique filtered `(TenantId, Code)` | Active tenant business key |
-| `Customers` | `(TenantId, IsDeleted, LegalName)` | Active customer lookup |
+| `Customers` | `(TenantId, IsActive, LegalName)` | Active customer lookup |
 | `CustomerLocations` | Unique filtered `(TenantId, CustomerId, Name)` | Active location name |
 | `Invoices` | Unique filtered `(TenantId, InvoiceNumber)` | Number uniqueness |
-| `Invoices` | `(TenantId, IsDeleted, StatusId, CreatedUtc DESC, Id DESC)` including summary columns | List and dashboard |
-| `Invoices` | `(TenantId, IsDeleted, CustomerId, CreatedUtc DESC)` | Customer invoice history |
-| `Invoices` | `(TenantId, IsDeleted, StatusId, DueDate)` including `CurrencyCode, Total` | Overdue/dashboard query |
+| `Invoices` | `(TenantId, IsActive, StatusId, CreatedUtc DESC, Id DESC)` including summary columns | List and dashboard |
+| `Invoices` | `(TenantId, IsActive, CustomerId, CreatedUtc DESC)` | Customer invoice history |
+| `Invoices` | `(TenantId, IsActive, StatusId, DueDate)` including `CurrencyCode, Total` | Overdue/dashboard query |
 | `InvoiceLineItems` | Unique filtered `(TenantId, InvoiceId, LineNumber)` | Stable active lines |
 | `InvoiceStatusHistory` | `(TenantId, InvoiceId, ChangedUtc DESC)` | Audit timeline |
 | `IdempotencyRequests` | Unique `(TenantId, Operation, IdempotencyKey)` | Request serialization/replay |
@@ -325,21 +311,21 @@ The final migration and query plans will be verified before accepting additional
 
 ## 6. Query filters
 
-EF Core filters for soft-deletable tenant entities use both predicates:
+EF Core filters for activatable tenant entities use both predicates:
 
 ```csharp
-entity => entity.TenantId == tenantContext.TenantId && !entity.IsDeleted
+entity => entity.TenantId == tenantContext.TenantId && entity.IsActive
 ```
 
-For entities without soft deletion, only the tenant predicate applies. `IgnoreQueryFilters` is prohibited in normal request handlers and isolated to explicit administrative or integration-test code.
+For entities without activation state, only the tenant predicate applies. `IgnoreQueryFilters` is prohibited in normal request handlers and isolated to explicit administrative or integration-test code.
 
-## 7. Retention and restoration
+## 7. Retention and reactivation
 
-- Normal reads exclude `IsDeleted = 1`.
-- Customers and locations referenced by active Draft invoices cannot be soft-deleted.
-- Issued invoice details use immutable bill-to snapshot fields, so later customer edits or soft deletion do not alter the historical invoice.
-- Restoration, if later introduced, validates uniqueness before clearing deletion metadata.
-- An invoice may be restored only if it was Draft when deleted.
+- Normal reads exclude `IsActive = 0`.
+- Customers and locations referenced by active Draft invoices cannot be deactivated.
+- Issued invoice details use immutable bill-to snapshot fields, so later customer edits or deactivation do not alter the historical invoice.
+- Reactivation, if later introduced, validates uniqueness before setting `IsActive = 1`.
+- An invoice may be reactivated only if it remained Draft.
 - Temporal history is retained according to a documented production retention policy; the assessment does not add an automated cleanup job.
 - Idempotency records have an expiry column, but cleanup processing is a future enhancement.
 

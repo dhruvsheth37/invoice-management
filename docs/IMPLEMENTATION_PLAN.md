@@ -15,7 +15,7 @@ Deliverables:
 - Architecture, API, and database specifications.
 - C4, component, ER, lifecycle, and sequence diagrams.
 - Architecture decision records.
-- Exact soft-deletion and temporal-table policies.
+- Exact record-activation and temporal-table policies.
 - Assessment-versus-future matrix.
 
 Gate:
@@ -31,7 +31,7 @@ Deliverables:
 - Four source projects and two test projects.
 - Domain model and EF Core mapping.
 - Tenant query filters and tenant-aware composite relationships.
-- `IsDeleted`, deletion metadata, and constraints.
+- `IsActive` filtering and Draft-only invoice deactivation constraints.
 - Temporal mapping for invoices and lines.
 - Initial migration, seed data, Docker Compose, and database artifacts.
 
@@ -57,8 +57,8 @@ Verification:
 
 - Every assessment endpoint works.
 - Invalid transitions are rejected.
-- Deleted rows are invisible.
-- Issued financial records cannot be soft-deleted or changed.
+- Inactive rows are invisible.
+- Issued financial records cannot be deactivated or changed.
 
 Commit: `feat: implement tenant-scoped invoice workflows`
 
@@ -112,7 +112,7 @@ Commit: `docs: finalize assessment documentation and CI`
 | SQL Server | Single primary database | Azure SQL read replicas |
 | Temporal data | Invoices and line items | All appropriate transactional tables |
 | Audit | Audit metadata, temporal rows, explicit status history | Centralized immutable audit stream |
-| Soft deletion | Metadata and filters on business entities; Draft invoice policy | Administrative restoration and retention workflows |
+| Record activation | `IsActive` and filters on business entities; Draft invoice policy | Administrative reactivation and retention workflows |
 | Cache | None | Redis |
 | Messaging | None | Azure Service Bus, outbox, idempotent consumers |
 | Background work | None | Azure Functions and ETL |
@@ -126,7 +126,7 @@ Commit: `docs: finalize assessment documentation and CI`
 - Are Customer and CustomerLocation required in the assessment implementation?
 - Are the Draft, Issued, Paid, and Void states accepted?
 - Are business-operation endpoints preferred over generic status patching?
-- Is the soft-delete policy accepted, especially Draft-only invoice deletion?
+- Is the activation policy accepted, especially Draft-only invoice deactivation?
 - Are temporal tables limited to invoices and line items?
 - Are EF migrations accepted as the schema authority?
 - Is development-only `X-Tenant-Id` with production JWT claims accepted?

@@ -112,7 +112,7 @@ Rules:
 - A draft can be edited before issue.
 - Invoice number, issue date, and due date are finalized during issue.
 - Issued invoice financial fields and line items are immutable.
-- Issuance snapshots the customer and billing-location identity onto the invoice so later master-data edits or soft deletion do not rewrite financial history.
+- Issuance snapshots the customer and billing-location identity onto the invoice so later master-data edits or deactivation do not rewrite financial history.
 - `Paid` and `Void` are terminal in the assessment scope.
 - `Overdue` is derived from `DueDate`; it is not persisted as a lifecycle status.
 - `PartiallyPaid` is deferred until a payment/allocation model exists.
@@ -126,32 +126,26 @@ Isolation is layered:
 
 1. Request layer resolves the tenant from a trusted JWT claim in production. `X-Tenant-Id` is allowed only in Development and integration tests.
 2. Application commands never accept an authoritative tenant identifier in the request body.
-3. EF Core global query filters apply both `TenantId` and `IsDeleted` predicates.
+3. EF Core global query filters apply both `TenantId` and `IsActive` predicates.
 4. Tenant-leading alternate keys and composite foreign keys prevent cross-tenant references in SQL Server.
 5. Integration tests attempt cross-tenant reads and writes.
 
 Global query filters are defense in depth, not the sole security boundary. Administrative operations that bypass filters must be isolated and explicit.
 
-## 8. Soft deletion
+## 8. Record activation
 
-`Customers`, `CustomerLocations`, `Invoices`, and `InvoiceLineItems` contain:
-
-- `IsDeleted bit NOT NULL DEFAULT 0`
-- `DeletedUtc datetime2(7) NULL`
-- `DeletedBy nvarchar(200) NULL`
+`Customers`, `CustomerLocations`, `Invoices`, and `InvoiceLineItems` contain only `IsActive bit NOT NULL DEFAULT 1` for application-level visibility. No separate soft-deletion flag or deletion-specific audit columns are used.
 
 Policy:
 
 - No hard-delete endpoint is part of the assessment API.
-- Only Draft invoices may ever be soft-deleted.
-- Issued, Paid, and Void invoices are financial records and must be retained; issued invoices are voided rather than deleted.
-- Line items are owned by the invoice and may be soft-deleted only while the invoice is Draft.
-- Customers and locations referenced by an active Draft cannot be soft-deleted. Issued invoices remain readable from their immutable bill-to snapshots.
-- Lookup, sequence, idempotency, and append-only history records are not soft-deleted.
-- EF query filters exclude deleted rows by default.
-- Deletion metadata must be populated consistently and is protected by check constraints.
+- Only Draft invoices and their line items may be deactivated.
+- Issued, Paid, and Void invoices are financial records and must remain active and retained; issued invoices are voided rather than deactivated.
+- Customers and locations referenced by an active Draft cannot be deactivated. Issued invoices remain readable from their immutable bill-to snapshots.
+- EF query filters exclude inactive business rows by default.
+- Standard `ModifiedUtc` and `ModifiedBy` audit fields record the last change, including deactivation.
 
-Soft deletion is distinct from temporal history. `IsDeleted` controls normal visibility; temporal tables preserve prior row versions.
+Activation is distinct from temporal history. `IsActive` controls normal visibility; temporal tables preserve prior row versions.
 
 ## 9. Temporal auditing and business history
 
@@ -172,7 +166,7 @@ The temporal period columns are hidden shadow properties in EF Core:
 - Clients provide quantities, unit prices, and tax rates, but never authoritative totals.
 - The domain calculates line and invoice totals using `decimal` values with explicit rounding rules.
 - Invoice totals are persisted in the same transaction as line items.
-- SQL check constraints reject negative values and inconsistent soft-deletion metadata.
+- SQL check constraints reject negative values and prevent deactivating non-Draft invoices.
 - Invoice numbers are assigned only during issue using a tenant/fiscal-year sequence record.
 - Customer legal name, tax identity, and billing address are copied to immutable invoice snapshot fields during issue.
 - A filtered unique index guarantees invoice-number uniqueness per tenant.

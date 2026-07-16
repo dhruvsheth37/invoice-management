@@ -2,7 +2,7 @@ using InvoiceManagement.Domain.Common;
 
 namespace InvoiceManagement.Domain.Invoices;
 
-public sealed class InvoiceLineItem : SoftDeletableTenantEntity
+public sealed class InvoiceLineItem : ActivatableTenantEntity
 {
     private const int MoneyScale = 4;
 
@@ -85,7 +85,7 @@ public sealed class InvoiceLineItem : SoftDeletableTenantEntity
             createdBy);
     }
 
-    internal void SoftDelete(DateTime deletedUtc, string deletedBy) => MarkDeleted(deletedUtc, deletedBy);
+    internal void Deactivate(DateTime modifiedUtc, string modifiedBy) => MarkInactive(modifiedUtc, modifiedBy);
 
     private void Recalculate()
     {

@@ -8,7 +8,7 @@ public sealed class InvoiceFoundationTests
     private static readonly DateTime Now = new(2026, 7, 16, 12, 0, 0, DateTimeKind.Utc);
 
     [Fact]
-    public void Draft_calculates_totals_and_can_be_soft_deleted()
+    public void Draft_calculates_totals_and_can_be_deactivated()
     {
         var invoice = CreateDraft();
         invoice.AddLine(Guid.NewGuid(), 1, "Freight", 2m, 125m, 0.18m, Now, "user-1");
@@ -17,14 +17,14 @@ public sealed class InvoiceFoundationTests
         Assert.Equal(45m, invoice.TaxTotal);
         Assert.Equal(295m, invoice.Total);
 
-        invoice.SoftDeleteDraft(Now.AddMinutes(1), "user-1");
+        invoice.DeactivateDraft(Now.AddMinutes(1), "user-1");
 
-        Assert.True(invoice.IsDeleted);
-        Assert.All(invoice.LineItems, line => Assert.True(line.IsDeleted));
+        Assert.False(invoice.IsActive);
+        Assert.All(invoice.LineItems, line => Assert.False(line.IsActive));
     }
 
     [Fact]
-    public void Issued_invoice_captures_bill_to_snapshot_and_cannot_be_deleted()
+    public void Issued_invoice_captures_bill_to_snapshot_and_cannot_be_deactivated()
     {
         var invoice = CreateDraft();
         invoice.AddLine(Guid.NewGuid(), 1, "Freight", 1m, 100m, 0.18m, Now, "user-1");
@@ -50,7 +50,7 @@ public sealed class InvoiceFoundationTests
 
         Assert.Equal(InvoiceStatus.Issued, invoice.Status);
         Assert.Equal("Acme Logistics Ltd", invoice.BillToLegalName);
-        Assert.Throws<DomainException>(() => invoice.SoftDeleteDraft(Now.AddMinutes(1), "user-1"));
+        Assert.Throws<DomainException>(() => invoice.DeactivateDraft(Now.AddMinutes(1), "user-1"));
     }
 
     private static Invoice CreateDraft() =>

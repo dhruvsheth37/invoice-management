@@ -11,7 +11,7 @@ GO
 BEGIN TRANSACTION;
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [InvoiceStatuses] (
@@ -25,7 +25,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [Tenants] (
@@ -46,7 +46,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [Customers] (
@@ -55,26 +55,22 @@ BEGIN
         [LegalName] nvarchar(200) NOT NULL,
         [TaxNumber] nvarchar(50) NULL,
         [Email] nvarchar(254) NULL,
-        [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
         [CreatedUtc] datetime2(7) NOT NULL,
         [CreatedBy] nvarchar(200) NOT NULL,
         [ModifiedUtc] datetime2(7) NULL,
         [ModifiedBy] nvarchar(200) NULL,
         [RowVersion] rowversion NOT NULL,
         [TenantId] uniqueidentifier NOT NULL,
-        [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-        [DeletedUtc] datetime2(7) NULL,
-        [DeletedBy] nvarchar(200) NULL,
+        [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
         CONSTRAINT [PK_Customers] PRIMARY KEY ([Id]),
         CONSTRAINT [AK_Customers_TenantId_Id] UNIQUE ([TenantId], [Id]),
-        CONSTRAINT [CK_Customers_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
         CONSTRAINT [FK_Customers_Tenants_TenantId] FOREIGN KEY ([TenantId]) REFERENCES [Tenants] ([Id])
     );
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [IdempotencyRequests] (
@@ -98,7 +94,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [InvoiceNumberSequences] (
@@ -115,7 +111,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [CustomerLocations] (
@@ -129,27 +125,23 @@ BEGIN
         [PostalCode] nvarchar(20) NULL,
         [CountryCode] char(2) NOT NULL,
         [TaxNumber] nvarchar(50) NULL,
-        [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
         [CreatedUtc] datetime2(7) NOT NULL,
         [CreatedBy] nvarchar(200) NOT NULL,
         [ModifiedUtc] datetime2(7) NULL,
         [ModifiedBy] nvarchar(200) NULL,
         [RowVersion] rowversion NOT NULL,
         [TenantId] uniqueidentifier NOT NULL,
-        [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-        [DeletedUtc] datetime2(7) NULL,
-        [DeletedBy] nvarchar(200) NULL,
+        [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
         CONSTRAINT [PK_CustomerLocations] PRIMARY KEY ([Id]),
         CONSTRAINT [AK_CustomerLocations_TenantId_CustomerId_Id] UNIQUE ([TenantId], [CustomerId], [Id]),
         CONSTRAINT [AK_CustomerLocations_TenantId_Id] UNIQUE ([TenantId], [Id]),
-        CONSTRAINT [CK_CustomerLocations_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
         CONSTRAINT [FK_CustomerLocations_Customers_TenantId_CustomerId] FOREIGN KEY ([TenantId], [CustomerId]) REFERENCES [Customers] ([TenantId], [Id])
     );
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     IF SCHEMA_ID(N'history') IS NULL EXEC(N'CREATE SCHEMA [history];');
@@ -157,7 +149,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [Invoices] (
@@ -193,14 +185,12 @@ BEGIN
         [ModifiedBy] nvarchar(200) NULL,
         [RowVersion] rowversion NOT NULL,
         [TenantId] uniqueidentifier NOT NULL,
-        [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-        [DeletedUtc] datetime2(7) NULL,
-        [DeletedBy] nvarchar(200) NULL,
+        [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
         CONSTRAINT [PK_Invoices] PRIMARY KEY ([Id]),
         CONSTRAINT [AK_Invoices_TenantId_Id] UNIQUE ([TenantId], [Id]),
         CONSTRAINT [CK_Invoices_Amounts] CHECK ([Subtotal] >= 0 AND [TaxTotal] >= 0 AND [Total] >= 0 AND [Total] = [Subtotal] + [TaxTotal]),
         CONSTRAINT [CK_Invoices_Dates] CHECK ([DueDate] IS NULL OR [IssueDate] IS NULL OR [DueDate] >= [IssueDate]),
-        CONSTRAINT [CK_Invoices_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [StatusId] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
+        CONSTRAINT [CK_Invoices_Deactivation] CHECK ([IsActive] = 1 OR [StatusId] = 1),
         CONSTRAINT [CK_Invoices_Draft] CHECK ([StatusId] <> 1 OR ([InvoiceNumber] IS NULL AND [IssueDate] IS NULL AND [PaidDate] IS NULL)),
         CONSTRAINT [CK_Invoices_IssuedSnapshot] CHECK ([StatusId] NOT IN (2, 3) OR ([InvoiceNumber] IS NOT NULL AND [IssueDate] IS NOT NULL AND [DueDate] IS NOT NULL AND [BillToCustomerCode] IS NOT NULL AND [BillToLegalName] IS NOT NULL AND [BillToAddressLine1] IS NOT NULL AND [BillToCity] IS NOT NULL AND [BillToCountryCode] IS NOT NULL)),
         CONSTRAINT [CK_Invoices_Paid] CHECK (([StatusId] = 3 AND [PaidDate] IS NOT NULL) OR ([StatusId] <> 3 AND [PaidDate] IS NULL)),
@@ -215,7 +205,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [InvoiceLineItems] (
@@ -237,13 +227,10 @@ BEGIN
         [ModifiedBy] nvarchar(200) NULL,
         [RowVersion] rowversion NOT NULL,
         [TenantId] uniqueidentifier NOT NULL,
-        [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit),
-        [DeletedUtc] datetime2(7) NULL,
-        [DeletedBy] nvarchar(200) NULL,
+        [IsActive] bit NOT NULL DEFAULT CAST(1 AS bit),
         CONSTRAINT [PK_InvoiceLineItems] PRIMARY KEY ([Id]),
         CONSTRAINT [AK_InvoiceLineItems_TenantId_Id] UNIQUE ([TenantId], [Id]),
         CONSTRAINT [CK_InvoiceLineItems_Amounts] CHECK ([NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]),
-        CONSTRAINT [CK_InvoiceLineItems_DeletionMetadata] CHECK (([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)),
         CONSTRAINT [CK_InvoiceLineItems_Values] CHECK ([LineNumber] > 0 AND [Quantity] > 0 AND [UnitPrice] >= 0 AND [TaxRate] >= 0 AND [TaxRate] <= 1),
         CONSTRAINT [FK_InvoiceLineItems_Invoices_TenantId_InvoiceId] FOREIGN KEY ([TenantId], [InvoiceId]) REFERENCES [Invoices] ([TenantId], [Id]),
         PERIOD FOR SYSTEM_TIME([ValidFromUtc], [ValidToUtc])
@@ -252,7 +239,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE TABLE [InvoiceStatusHistory] (
@@ -274,7 +261,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'Code', N'DisplayName', N'SortOrder') AND [object_id] = OBJECT_ID(N'[InvoiceStatuses]'))
@@ -290,7 +277,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreatedBy', N'CreatedUtc', N'IsActive', N'ModifiedBy', N'ModifiedUtc', N'Name', N'Slug') AND [object_id] = OBJECT_ID(N'[Tenants]'))
@@ -303,31 +290,31 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    EXEC(N'CREATE UNIQUE INDEX [IX_CustomerLocations_TenantId_CustomerId_Name] ON [CustomerLocations] ([TenantId], [CustomerId], [Name]) WHERE [IsDeleted] = 0');
+    EXEC(N'CREATE UNIQUE INDEX [IX_CustomerLocations_TenantId_CustomerId_Name] ON [CustomerLocations] ([TenantId], [CustomerId], [Name]) WHERE [IsActive] = 1');
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    EXEC(N'CREATE UNIQUE INDEX [IX_Customers_TenantId_Code] ON [Customers] ([TenantId], [Code]) WHERE [IsDeleted] = 0');
+    EXEC(N'CREATE UNIQUE INDEX [IX_Customers_TenantId_Code] ON [Customers] ([TenantId], [Code]) WHERE [IsActive] = 1');
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    CREATE INDEX [IX_Customers_TenantId_IsDeleted_LegalName] ON [Customers] ([TenantId], [IsDeleted], [LegalName]);
+    CREATE INDEX [IX_Customers_TenantId_IsActive_LegalName] ON [Customers] ([TenantId], [IsActive], [LegalName]);
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE INDEX [IX_IdempotencyRequests_ExpiresUtc] ON [IdempotencyRequests] ([ExpiresUtc]);
@@ -335,7 +322,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_IdempotencyRequests_TenantId_Operation_IdempotencyKey] ON [IdempotencyRequests] ([TenantId], [Operation], [IdempotencyKey]);
@@ -343,15 +330,15 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    EXEC(N'CREATE UNIQUE INDEX [IX_InvoiceLineItems_TenantId_InvoiceId_LineNumber] ON [InvoiceLineItems] ([TenantId], [InvoiceId], [LineNumber]) WHERE [IsDeleted] = 0');
+    EXEC(N'CREATE UNIQUE INDEX [IX_InvoiceLineItems_TenantId_InvoiceId_LineNumber] ON [InvoiceLineItems] ([TenantId], [InvoiceId], [LineNumber]) WHERE [IsActive] = 1');
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE INDEX [IX_Invoices_StatusId] ON [Invoices] ([StatusId]);
@@ -359,7 +346,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE INDEX [IX_Invoices_TenantId_CustomerId_CustomerLocationId] ON [Invoices] ([TenantId], [CustomerId], [CustomerLocationId]);
@@ -367,7 +354,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     EXEC(N'CREATE UNIQUE INDEX [IX_Invoices_TenantId_InvoiceNumber] ON [Invoices] ([TenantId], [InvoiceNumber]) WHERE [InvoiceNumber] IS NOT NULL');
@@ -375,31 +362,31 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    CREATE INDEX [IX_Invoices_TenantId_IsDeleted_CustomerId_CreatedUtc] ON [Invoices] ([TenantId], [IsDeleted], [CustomerId], [CreatedUtc] DESC);
+    CREATE INDEX [IX_Invoices_TenantId_IsActive_CustomerId_CreatedUtc] ON [Invoices] ([TenantId], [IsActive], [CustomerId], [CreatedUtc] DESC);
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    CREATE INDEX [IX_Invoices_TenantId_IsDeleted_StatusId_CreatedUtc_Id] ON [Invoices] ([TenantId], [IsDeleted], [StatusId], [CreatedUtc] DESC, [Id] DESC) INCLUDE ([InvoiceNumber], [CustomerId], [Total], [CurrencyCode], [DueDate]);
+    CREATE INDEX [IX_Invoices_TenantId_IsActive_StatusId_CreatedUtc_Id] ON [Invoices] ([TenantId], [IsActive], [StatusId], [CreatedUtc] DESC, [Id] DESC) INCLUDE ([InvoiceNumber], [CustomerId], [Total], [CurrencyCode], [DueDate]);
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
-    CREATE INDEX [IX_Invoices_TenantId_IsDeleted_StatusId_DueDate] ON [Invoices] ([TenantId], [IsDeleted], [StatusId], [DueDate]) INCLUDE ([CurrencyCode], [Total]);
+    CREATE INDEX [IX_Invoices_TenantId_IsActive_StatusId_DueDate] ON [Invoices] ([TenantId], [IsActive], [StatusId], [DueDate]) INCLUDE ([CurrencyCode], [Total]);
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_InvoiceStatuses_Code] ON [InvoiceStatuses] ([Code]);
@@ -407,7 +394,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE INDEX [IX_InvoiceStatusHistory_FromStatusId] ON [InvoiceStatusHistory] ([FromStatusId]);
@@ -415,7 +402,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE INDEX [IX_InvoiceStatusHistory_TenantId_InvoiceId_ChangedUtc] ON [InvoiceStatusHistory] ([TenantId], [InvoiceId], [ChangedUtc] DESC);
@@ -423,7 +410,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE INDEX [IX_InvoiceStatusHistory_ToStatusId] ON [InvoiceStatusHistory] ([ToStatusId]);
@@ -431,7 +418,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_Tenants_Slug] ON [Tenants] ([Slug]);
@@ -439,11 +426,11 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260716112720_InitialSchema'
+    WHERE [MigrationId] = N'20260716122805_InitialSchema'
 )
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20260716112720_InitialSchema', N'10.0.9');
+    VALUES (N'20260716122805_InitialSchema', N'10.0.9');
 END;
 
 COMMIT;

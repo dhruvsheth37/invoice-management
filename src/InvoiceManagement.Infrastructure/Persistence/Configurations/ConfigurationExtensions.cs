@@ -16,11 +16,9 @@ internal static class ConfigurationExtensions
         builder.Property(entity => entity.RowVersion).IsRowVersion().IsConcurrencyToken();
     }
 
-    public static void ConfigureSoftDeletion<TEntity>(this EntityTypeBuilder<TEntity> builder)
-        where TEntity : SoftDeletableTenantEntity
+    public static void ConfigureActivation<TEntity>(this EntityTypeBuilder<TEntity> builder)
+        where TEntity : ActivatableTenantEntity
     {
-        builder.Property(entity => entity.IsDeleted).HasDefaultValue(false);
-        builder.Property(entity => entity.DeletedUtc).HasColumnType("datetime2(7)");
-        builder.Property(entity => entity.DeletedBy).HasMaxLength(200);
+        builder.Property(entity => entity.IsActive).HasDefaultValue(true);
     }
 }

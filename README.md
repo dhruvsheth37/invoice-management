@@ -4,7 +4,7 @@ Production-minded, multi-tenant invoice management API designed for the Qwiik te
 
 ## Current status
 
-Phase 2 establishes the .NET 10 solution, domain foundation, EF Core SQL Server model, initial migration, selective temporal history, soft-deletion metadata, health checks, and database deployment artifacts. Core HTTP invoice workflows are planned for Phase 3.
+Phase 2 establishes the .NET 10 solution, domain foundation, EF Core SQL Server model, initial migration, selective temporal history, active-record filtering, health checks, and database deployment artifacts. Core HTTP invoice workflows are planned for Phase 3.
 
 ## Foundation verification
 

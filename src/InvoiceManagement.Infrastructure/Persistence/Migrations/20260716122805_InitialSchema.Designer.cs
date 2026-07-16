@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InvoiceManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(InvoiceDbContext))]
-    [Migration("20260716112720_InitialSchema")]
+    [Migration("20260716122805_InitialSchema")]
     partial class InitialSchema
     {
         /// <inheritdoc />
@@ -44,13 +44,6 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("datetime2(7)");
 
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("DeletedUtc")
-                        .HasColumnType("datetime2(7)");
-
                     b.Property<string>("Email")
                         .HasMaxLength(254)
                         .HasColumnType("nvarchar(254)");
@@ -59,11 +52,6 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("LegalName")
                         .IsRequired()
@@ -94,14 +82,11 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "Code")
                         .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasFilter("[IsActive] = 1");
 
-                    b.HasIndex("TenantId", "IsDeleted", "LegalName");
+                    b.HasIndex("TenantId", "IsActive", "LegalName");
 
-                    b.ToTable("Customers", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Customers_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
-                        });
+                    b.ToTable("Customers", (string)null);
                 });
 
             modelBuilder.Entity("InvoiceManagement.Domain.Customers.CustomerLocation", b =>
@@ -139,22 +124,10 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("DeletedUtc")
-                        .HasColumnType("datetime2(7)");
-
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("ModifiedBy")
                         .HasMaxLength(200)
@@ -195,12 +168,9 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "CustomerId", "Name")
                         .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasFilter("[IsActive] = 1");
 
-                    b.ToTable("CustomerLocations", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_CustomerLocations_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
-                        });
+                    b.ToTable("CustomerLocations", (string)null);
                 });
 
             modelBuilder.Entity("InvoiceManagement.Domain.Invoices.Invoice", b =>
@@ -262,13 +232,6 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CustomerLocationId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("DeletedUtc")
-                        .HasColumnType("datetime2(7)");
-
                     b.Property<DateOnly?>("DueDate")
                         .HasColumnType("date");
 
@@ -276,10 +239,10 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<bool>("IsDeleted")
+                    b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasDefaultValue(true);
 
                     b.Property<DateOnly?>("IssueDate")
                         .HasColumnType("date");
@@ -351,17 +314,17 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "CustomerId", "CustomerLocationId");
 
-                    b.HasIndex("TenantId", "IsDeleted", "CustomerId", "CreatedUtc")
+                    b.HasIndex("TenantId", "IsActive", "CustomerId", "CreatedUtc")
                         .IsDescending(false, false, false, true);
 
-                    b.HasIndex("TenantId", "IsDeleted", "Status", "DueDate");
+                    b.HasIndex("TenantId", "IsActive", "Status", "DueDate");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "IsDeleted", "Status", "DueDate"), new[] { "CurrencyCode", "Total" });
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "IsActive", "Status", "DueDate"), new[] { "CurrencyCode", "Total" });
 
-                    b.HasIndex("TenantId", "IsDeleted", "Status", "CreatedUtc", "Id")
+                    b.HasIndex("TenantId", "IsActive", "Status", "CreatedUtc", "Id")
                         .IsDescending(false, false, false, true, true);
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "IsDeleted", "Status", "CreatedUtc", "Id"), new[] { "InvoiceNumber", "CustomerId", "Total", "CurrencyCode", "DueDate" });
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "IsActive", "Status", "CreatedUtc", "Id"), new[] { "InvoiceNumber", "CustomerId", "Total", "CurrencyCode", "DueDate" });
 
                     b.ToTable("Invoices", null, t =>
                         {
@@ -369,7 +332,7 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_Invoices_Dates", "[DueDate] IS NULL OR [IssueDate] IS NULL OR [DueDate] >= [IssueDate]");
 
-                            t.HasCheckConstraint("CK_Invoices_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [StatusId] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
+                            t.HasCheckConstraint("CK_Invoices_Deactivation", "[IsActive] = 1 OR [StatusId] = 1");
 
                             t.HasCheckConstraint("CK_Invoices_Draft", "[StatusId] <> 1 OR ([InvoiceNumber] IS NULL AND [IssueDate] IS NULL AND [PaidDate] IS NULL)");
 
@@ -406,13 +369,6 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("datetime2(7)");
 
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("DeletedUtc")
-                        .HasColumnType("datetime2(7)");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -421,10 +377,10 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("InvoiceId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("IsDeleted")
+                    b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasDefaultValue(true);
 
                     b.Property<short>("LineNumber")
                         .HasColumnType("smallint");
@@ -485,13 +441,11 @@ namespace InvoiceManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "InvoiceId", "LineNumber")
                         .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasFilter("[IsActive] = 1");
 
                     b.ToTable("InvoiceLineItems", null, t =>
                         {
                             t.HasCheckConstraint("CK_InvoiceLineItems_Amounts", "[NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]");
-
-                            t.HasCheckConstraint("CK_InvoiceLineItems_DeletionMetadata", "([IsDeleted] = 0 AND [DeletedUtc] IS NULL AND [DeletedBy] IS NULL) OR ([IsDeleted] = 1 AND [DeletedUtc] IS NOT NULL AND [DeletedBy] IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_InvoiceLineItems_Values", "[LineNumber] > 0 AND [Quantity] > 0 AND [UnitPrice] >= 0 AND [TaxRate] >= 0 AND [TaxRate] <= 1");
                         });
