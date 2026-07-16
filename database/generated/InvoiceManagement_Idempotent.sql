@@ -462,9 +462,9 @@ BEGIN
     SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
         [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
 
-    UPDATE [history].[InvoicesHistory]
-    SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
-        [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
+    EXEC(N'UPDATE [history].[InvoicesHistory]
+    SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N''1''),
+        [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N''1'');');
 
     ALTER TABLE [Invoices]
         SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = [history].[InvoicesHistory]));
@@ -475,9 +475,9 @@ BEGIN
     SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
         [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
 
-    UPDATE [history].[InvoiceLineItemsHistory]
-    SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
-        [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
+    EXEC(N'UPDATE [history].[InvoiceLineItemsHistory]
+    SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N''1''),
+        [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N''1'');');
 
     ALTER TABLE [InvoiceLineItems]
         SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = [history].[InvoiceLineItemsHistory]));

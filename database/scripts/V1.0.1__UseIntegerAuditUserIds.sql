@@ -20,9 +20,9 @@ UPDATE [Invoices]
 SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
     [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
 
-UPDATE [history].[InvoicesHistory]
-SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
-    [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
+EXEC(N'UPDATE [history].[InvoicesHistory]
+SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N''1''),
+    [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N''1'');');
 
 ALTER TABLE [Invoices]
     SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = [history].[InvoicesHistory]));
@@ -33,9 +33,9 @@ UPDATE [InvoiceLineItems]
 SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
     [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
 
-UPDATE [history].[InvoiceLineItemsHistory]
-SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N'1'),
-    [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N'1');
+EXEC(N'UPDATE [history].[InvoiceLineItemsHistory]
+SET [CreatedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [CreatedBy])), N''1''),
+    [ModifiedBy] = COALESCE(CONVERT(nvarchar(200), TRY_CONVERT(int, [ModifiedBy])), N''1'');');
 
 ALTER TABLE [InvoiceLineItems]
     SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = [history].[InvoiceLineItemsHistory]));
@@ -87,7 +87,7 @@ FROM [sys].[default_constraints] [d]
 INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
 WHERE ([d].[parent_object_id] = OBJECT_ID(N'[history].[InvoicesHistory]') AND [c].[name] = N'ModifiedBy');
 IF @var4 IS NOT NULL EXEC(N'ALTER TABLE [history].[InvoicesHistory] DROP CONSTRAINT ' + @var4 + ';');
-UPDATE [history].[InvoicesHistory] SET [ModifiedBy] = 1 WHERE [ModifiedBy] IS NULL;
+EXEC(N'UPDATE [history].[InvoicesHistory] SET [ModifiedBy] = 1 WHERE [ModifiedBy] IS NULL');
 ALTER TABLE [history].[InvoicesHistory] ALTER COLUMN [ModifiedBy] int NOT NULL;
 ALTER TABLE [history].[InvoicesHistory] ADD DEFAULT 1 FOR [ModifiedBy];
 
@@ -128,7 +128,7 @@ FROM [sys].[default_constraints] [d]
 INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
 WHERE ([d].[parent_object_id] = OBJECT_ID(N'[history].[InvoiceLineItemsHistory]') AND [c].[name] = N'ModifiedBy');
 IF @var8 IS NOT NULL EXEC(N'ALTER TABLE [history].[InvoiceLineItemsHistory] DROP CONSTRAINT ' + @var8 + ';');
-UPDATE [history].[InvoiceLineItemsHistory] SET [ModifiedBy] = 1 WHERE [ModifiedBy] IS NULL;
+EXEC(N'UPDATE [history].[InvoiceLineItemsHistory] SET [ModifiedBy] = 1 WHERE [ModifiedBy] IS NULL');
 ALTER TABLE [history].[InvoiceLineItemsHistory] ALTER COLUMN [ModifiedBy] int NOT NULL;
 ALTER TABLE [history].[InvoiceLineItemsHistory] ADD DEFAULT 1 FOR [ModifiedBy];
 
