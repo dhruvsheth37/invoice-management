@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AppException = InvoiceManagement.Application.Common.ApplicationException;
+using InvoiceManagement.Application.Abstractions.Tenancy;
 using InvoiceManagement.Api.Observability;
 using InvoiceManagement.Api.Tenancy;
 using InvoiceManagement.Domain.Common;
@@ -20,6 +21,7 @@ public sealed partial class GlobalExceptionHandler(
             DomainException error => (StatusCodes.Status409Conflict, error.Code, "Business rule rejected the operation.", error.Message),
             InvalidCorrelationException error => (StatusCodes.Status400BadRequest, "correlation.invalid", "Invalid correlation identifier.", error.Message),
             TenantAccessException error => (StatusCodes.Status403Forbidden, "tenant.invalid", "Tenant access is not permitted.", error.Message),
+            TenantIsolationException error => (StatusCodes.Status403Forbidden, "tenant.isolation_violation", "Tenant access is not permitted.", error.Message),
             BadHttpRequestException error => (StatusCodes.Status400BadRequest, "request.invalid", "The request is invalid.", error.Message),
             _ => (StatusCodes.Status500InternalServerError, "server.unexpected", "An unexpected error occurred.", null),
         };

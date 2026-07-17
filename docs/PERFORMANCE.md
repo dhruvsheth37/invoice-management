@@ -10,12 +10,16 @@ Performance changes are driven by query shape and contention before micro-optimi
 - Invoice details use EF Core split queries for line items and status history, avoiding collection cartesian expansion.
 - Invoice numbers use an atomic row/range-locked allocation command inside the existing transaction. The full issue workflow remains at `ReadCommitted` isolation.
 - EF contexts are pooled. Tenant identity is assigned to every scoped pooled lease rather than captured by the pooled context constructor.
+- EF Core 10 uses independently named tenant and activation filters. Controlled inactive-row reads can disable only `ActiveFilter`, preserving `TenantFilter`; a write guard rejects mismatched tracked writes before SQL execution.
 - Request log events use source generation, routine completions are `Debug`, health probes are excluded, and structured scopes use cached delegates.
+- Development EF command logging exposes generated SQL and duration with masked parameters. Production keeps command logging at `Warning`; dependency telemetry and slow-query thresholds are preferred over logging every command.
 - Covering indexes support created-date, due-date, and total keyset sorts plus currency/status dashboard aggregation.
 
 ## Deliberately deferred
 
 Compiled EF queries are not enabled without profiling evidence. They add rigid query variants and maintenance cost while providing less benefit than reducing transferred rows, avoiding offset scans, and improving indexes. Production traces and database query statistics should identify stable, frequently executed query shapes before introducing `EF.CompileAsyncQuery`.
+
+A generic Specification framework is also deferred. Focused business specifications become useful only when the same predicates must be shared by API search, exports, reporting, and background processing; tenant security remains an EF global-filter responsibility.
 
 ## Operational verification
 

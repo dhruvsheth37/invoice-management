@@ -1,6 +1,8 @@
+using InvoiceManagement.Domain.Common;
+
 namespace InvoiceManagement.Domain.Invoices;
 
-public sealed class InvoiceNumberSequence
+public sealed class InvoiceNumberSequence : ITenantScoped
 {
     private InvoiceNumberSequence()
     {

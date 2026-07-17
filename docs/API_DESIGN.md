@@ -142,7 +142,8 @@ Rules:
 - Pagination uses an opaque continuation token tied to the current filters and sort; offset pagination is not used.
 - Exact total count is optional and executes only when `includeTotalCount` is `true`.
 - Query uses `AsNoTracking` and DTO projection.
-- Inactive rows are excluded.
+- Named `TenantFilter` and `ActiveFilter` filters automatically exclude other-tenant and inactive rows.
+- `customerId` is an explicit search criterion. Billing location is not an authorization scope and is therefore not a global filter.
 
 ```json
 {
@@ -159,7 +160,7 @@ Rules:
 GET /api/v1/invoices/{invoiceId}
 ```
 
-Response: `200 OK` with `ETag`. An absent, deleted, or other-tenant invoice returns the same `404 Not Found` response to avoid disclosing resource existence.
+Response: `200 OK` with `ETag`. An absent, inactive, or other-tenant invoice returns the same `404 Not Found` response to avoid disclosing resource existence.
 
 ## 7. Issue invoice
 

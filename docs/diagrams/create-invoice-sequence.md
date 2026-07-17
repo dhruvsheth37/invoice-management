@@ -6,7 +6,7 @@ sequenceDiagram
     actor Client
     participant Middleware as Tenant and correlation middleware
     participant API as Invoice endpoint
-    participant App as CreateInvoice handler
+    participant App as InvoiceService via Application contract
     participant Domain as Invoice aggregate
     participant DB as SQL Server
 
@@ -23,7 +23,7 @@ sequenceDiagram
         DB-->>App: Customer/location projection
         App->>Domain: Create Draft and calculate totals
         Domain-->>App: Valid aggregate
-        App->>DB: Save invoice, lines, Draft history, idempotency result
+        App->>DB: Save invoice, lines, Draft history, idempotency result<br/>through tenant write guard
         DB-->>App: Commit and row version
         App-->>Client: 201 Created, ETag, correlation header
     end

@@ -25,12 +25,14 @@ The middleware order is intentional:
 
 1. Central exception handling.
 2. Correlation validation and W3C activity enrichment.
-3. Authentication.
-4. Trusted tenant-claim resolution.
-5. Structured request-completion logging.
-6. Tenant-partitioned rate limiting.
-7. Request timeouts.
-8. Authorization and controller execution.
+3. Status-code ProblemDetails fallback.
+4. Routing.
+5. Authentication.
+6. Trusted tenant-claim resolution.
+7. Structured request-completion logging.
+8. Tenant-partitioned rate limiting.
+9. Request timeouts.
+10. Authorization and controller execution.
 
 This ensures failures retain trace/correlation context and tenant-owned handlers never execute before the tenant boundary is resolved.
 
@@ -46,6 +48,12 @@ This ensures failures retain trace/correlation context and tenant-owned handlers
 - Lifecycle history and idempotency records keep the correlation identifier for audit navigation.
 
 Correlation identifies an execution chain; it is not an idempotency key and does not prevent duplicate work.
+
+## EF Core query logging
+
+Development logs executed EF Core commands at `Information` through the existing structured JSON console provider. The `Microsoft.EntityFrameworkCore.Database.Command` category records generated SQL, execution duration, and parameter placeholders, which also makes the automatically applied tenant predicates visible during local debugging.
+
+Parameter values remain masked because sensitive-data logging is not enabled. The default non-Development configuration keeps EF Core at `Warning` to avoid high-volume SQL logs and accidental customer or invoice data exposure. Production query analysis should use dependency telemetry and measured slow-query reporting instead of logging every command.
 
 ## ProblemDetails
 

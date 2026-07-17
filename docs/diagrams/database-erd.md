@@ -8,6 +8,9 @@ erDiagram
         nvarchar Name
         bit IsActive
         datetime2 CreatedUtc
+        int CreatedBy
+        datetime2 ModifiedUtc
+        int ModifiedBy
         rowversion RowVersion
     }
 
@@ -20,6 +23,9 @@ erDiagram
         nvarchar Email
         bit IsActive
         datetime2 CreatedUtc
+        int CreatedBy
+        datetime2 ModifiedUtc
+        int ModifiedBy
         rowversion RowVersion
     }
 
@@ -33,6 +39,9 @@ erDiagram
         char CountryCode
         bit IsActive
         datetime2 CreatedUtc
+        int CreatedBy
+        datetime2 ModifiedUtc
+        int ModifiedBy
         rowversion RowVersion
     }
 
@@ -40,6 +49,7 @@ erDiagram
         tinyint Id PK
         varchar Code UK
         nvarchar DisplayName
+        tinyint SortOrder
     }
 
     INVOICES {
@@ -59,6 +69,10 @@ erDiagram
         decimal TaxTotal
         decimal Total
         bit IsActive
+        datetime2 CreatedUtc
+        int CreatedBy
+        datetime2 ModifiedUtc
+        int ModifiedBy
         datetime2 ValidFromUtc
         datetime2 ValidToUtc
         rowversion RowVersion
@@ -77,6 +91,10 @@ erDiagram
         decimal TaxAmount
         decimal TotalAmount
         bit IsActive
+        datetime2 CreatedUtc
+        int CreatedBy
+        datetime2 ModifiedUtc
+        int ModifiedBy
         datetime2 ValidFromUtc
         datetime2 ValidToUtc
         rowversion RowVersion
@@ -111,8 +129,10 @@ erDiagram
         tinyint State
         uniqueidentifier ResourceId
         smallint ResponseStatus
+        nvarchar ResponseBody
         varchar CorrelationId
         datetime2 CreatedUtc
+        datetime2 CompletedUtc
         datetime2 ExpiresUtc
     }
 
@@ -149,4 +169,4 @@ erDiagram
     INVOICE_LINE_ITEMS ||--o{ INVOICE_LINE_ITEMS_HISTORY : temporal_versions
 ```
 
-The ERD summarizes the most decision-relevant fields. [Database Design](../DATABASE_DESIGN.md) is authoritative for exact SQL types, nullability, audit fields, constraints, and indexes.
+The ERD summarizes the most decision-relevant fields. Tenant-leading composite foreign keys enforce ownership even though Mermaid displays the relationships at entity level. `TenantFilter` applies to all tenant-owned EF entities; `ActiveFilter` additionally applies to customers, locations, invoices, and lines. [Database Design](../DATABASE_DESIGN.md) is authoritative for exact SQL types, nullability, constraints, and indexes.

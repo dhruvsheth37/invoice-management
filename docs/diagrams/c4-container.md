@@ -6,8 +6,9 @@ flowchart TB
     IdP["Identity provider"]
 
     subgraph Boundary["Invoice Management system"]
-        Api["ASP.NET Core API<br/>REST, validation, tenant resolution,<br/>correlation, OpenAPI"]
-        Modules["Modular application<br/>Customers, Invoices, Dashboard, Platform"]
+        Api["ASP.NET Core API<br/>REST, authentication, tenant resolution,<br/>correlation, rate limits, health"]
+        Modules["Modular application<br/>Application contracts, domain rules,<br/>invoice workflows and dashboard"]
+        Persistence["EF Core persistence<br/>Pooled contexts, named filters,<br/>tenant write guard"]
         Sql[("SQL Server<br/>Tenant data, temporal history,<br/>idempotency")]
     end
 
@@ -16,7 +17,8 @@ flowchart TB
     Client -->|"HTTPS/JSON"| Api
     IdP -->|"JWT claims"| Api
     Api --> Modules
-    Modules -->|"EF Core transactions and queries"| Sql
+    Modules --> Persistence
+    Persistence -->|"Tenant-scoped transactions and queries"| Sql
     Api -->|"Traces, metrics, structured logs"| Observability
 ```
 

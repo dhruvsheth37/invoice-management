@@ -1,6 +1,6 @@
 # ADR-005: Expose business lifecycle operations
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-16
 
 ## Context

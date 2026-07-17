@@ -1,6 +1,6 @@
 # ADR-003: Use EF migrations as schema authority
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-16
 
 ## Context

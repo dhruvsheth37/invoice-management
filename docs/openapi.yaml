@@ -2,6 +2,10 @@ openapi: 3.0.3
 info:
   title: Invoice Management API
   version: 1.0.0
+  description: >-
+    Multi-tenant invoice API. Production obtains tenant_id and user_id from a
+    validated bearer token. Development may use X-Tenant-Id and
+    X-Development-User-Id through the local authentication handler.
 servers:
   - url: http://localhost:5080
 security:
@@ -13,7 +17,23 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
-    TenantId: { name: X-Tenant-Id, in: header, required: true, schema: { type: string, format: uuid } }
+    TenantId:
+      name: X-Tenant-Id
+      in: header
+      required: false
+      description: Development/test tenant input only; production uses the validated tenant_id claim.
+      schema: { type: string, format: uuid }
+    DevelopmentUserId:
+      name: X-Development-User-Id
+      in: header
+      required: false
+      description: Development-only positive integer user ID; defaults to 1.
+      schema: { type: integer, minimum: 1, default: 1 }
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema: { type: string, maxLength: 64, pattern: '^[A-Za-z0-9._:-]+$' }
     IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 100 } }
     IfMatch: { name: If-Match, in: header, required: true, schema: { type: string } }
     InvoiceId: { name: invoiceId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -53,21 +73,80 @@ components:
     InvoiceSearchResult:
       type: object
       properties:
-        items: { type: array, items: { type: object } }
+        items: { type: array, items: { $ref: '#/components/schemas/InvoiceListItem' } }
         pageSize: { type: integer }
         totalCount: { type: integer, nullable: true }
         continuationToken: { type: string, nullable: true }
+    InvoiceListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        invoiceNumber: { type: string, nullable: true }
+        status: { type: string, enum: [Draft, Issued, Paid, Void] }
+        customerId: { type: string, format: uuid }
+        currencyCode: { type: string, minLength: 3, maxLength: 3 }
+        total: { type: number }
+        issueDate: { type: string, format: date, nullable: true }
+        dueDate: { type: string, format: date, nullable: true }
+        createdUtc: { type: string, format: date-time }
+    IssueInvoice:
+      type: object
+      properties:
+        issueDate: { type: string, format: date, nullable: true }
+        dueDate: { type: string, format: date, nullable: true }
+    MarkInvoicePaid:
+      type: object
+      required: [paidDate, reference]
+      properties:
+        paidDate: { type: string, format: date }
+        reference: { type: string, maxLength: 100 }
+    VoidInvoice:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 500 }
     Invoice:
       type: object
       properties:
         id: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        customerLocationId: { type: string, format: uuid }
         invoiceNumber: { type: string, nullable: true }
         status: { type: string, enum: [Draft, Issued, Paid, Void] }
         currencyCode: { type: string }
         subtotal: { type: number }
         taxTotal: { type: number }
         total: { type: number }
+        issueDate: { type: string, format: date, nullable: true }
+        dueDate: { type: string, format: date, nullable: true }
+        paidDate: { type: string, format: date, nullable: true }
+        paymentReference: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        voidReason: { type: string, nullable: true }
+        createdUtc: { type: string, format: date-time }
+        modifiedUtc: { type: string, format: date-time, nullable: true }
         eTag: { type: string }
+    InvoiceAmountSummary:
+      type: object
+      properties:
+        count: { type: integer }
+        amount: { type: number }
+    InvoiceCurrencySummary:
+      type: object
+      properties:
+        currencyCode: { type: string }
+        draft: { $ref: '#/components/schemas/InvoiceAmountSummary' }
+        issued: { $ref: '#/components/schemas/InvoiceAmountSummary' }
+        paid: { $ref: '#/components/schemas/InvoiceAmountSummary' }
+        void: { $ref: '#/components/schemas/InvoiceAmountSummary' }
+        overdue: { $ref: '#/components/schemas/InvoiceAmountSummary' }
+    InvoiceDashboard:
+      type: object
+      properties:
+        asOf: { type: string, format: date }
+        currencyBreakdown:
+          type: array
+          items: { $ref: '#/components/schemas/InvoiceCurrencySummary' }
     Problem:
       type: object
       properties:
@@ -75,6 +154,8 @@ components:
         title: { type: string }
         detail: { type: string }
         errorCode: { type: string }
+        traceId: { type: string }
+        correlationId: { type: string, nullable: true }
   responses:
     Problem:
       description: Request failed
@@ -115,19 +196,28 @@ paths:
     post:
       summary: Issue a Draft invoice
       parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' }, { $ref: '#/components/parameters/InvoiceId' }]
-      responses: { '200': { description: Issued invoice }, '409': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/IssueInvoice' } } }
+      responses: { '200': { description: Issued invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }, '409': { $ref: '#/components/responses/Problem' }, '422': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
   /api/v1/invoices/{invoiceId}/mark-paid:
     post:
       summary: Mark an Issued invoice paid
       parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' }, { $ref: '#/components/parameters/InvoiceId' }]
-      responses: { '200': { description: Paid invoice }, '409': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MarkInvoicePaid' } } }
+      responses: { '200': { description: Paid invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }, '409': { $ref: '#/components/responses/Problem' }, '422': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
   /api/v1/invoices/{invoiceId}/void:
     post:
       summary: Void a Draft or Issued invoice
       parameters: [{ $ref: '#/components/parameters/TenantId' }, { $ref: '#/components/parameters/IdempotencyKey' }, { $ref: '#/components/parameters/IfMatch' }, { $ref: '#/components/parameters/InvoiceId' }]
-      responses: { '200': { description: Voided invoice }, '409': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VoidInvoice' } } }
+      responses: { '200': { description: Voided invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }, '409': { $ref: '#/components/responses/Problem' }, '422': { $ref: '#/components/responses/Problem' }, '428': { $ref: '#/components/responses/Problem' } }
   /api/v1/dashboard/invoice-summary:
     get:
       summary: Get currency-separated invoice totals
       parameters: [{ $ref: '#/components/parameters/TenantId' }, { name: asOf, in: query, schema: { type: string, format: date } }]
-      responses: { '200': { description: Dashboard summary } }
+      responses: { '200': { description: Dashboard summary, content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceDashboard' } } } } }

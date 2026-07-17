@@ -4,7 +4,7 @@
 
 The SQL Server schema is designed to make tenant leakage and invalid financial relationships difficult even when application code is incorrect. It favors explicit constraints, predictable query paths, and auditable lifecycle changes.
 
-EF Core migrations are the schema authority. Phase 2 will generate matching reviewable SQL artifacts under `database/`.
+EF Core migrations are the schema authority. Matching reviewable deployment, seed, verification, and rollback artifacts are stored under `database/`.
 
 ## 2. Conventions
 
@@ -15,7 +15,7 @@ EF Core migrations are the schema authority. Phase 2 will generate matching revi
 - Quantity: `decimal(18,4)`.
 - Tax rate: `decimal(9,6)` represented as a fraction from 0 through 1.
 - Business timestamps: `datetime2(7)` in UTC.
-- Audit actors: `nvarchar(200)` containing the stable user or service subject.
+- Audit actors: required `int` user identifiers. `CreatedBy`, `ModifiedBy`, and `ChangedBy` default to local/system user ID `1` where applicable.
 - Currency: uppercase ISO 4217 `char(3)`.
 - Country: uppercase ISO 3166-1 alpha-2 `char(2)`.
 - Mutable aggregate rows use SQL Server `rowversion`.
@@ -311,17 +311,21 @@ Unique constraint: `(TenantId, Operation, IdempotencyKey)`.
 | `IdempotencyRequests` | Unique `(TenantId, Operation, IdempotencyKey)` | Request serialization/replay |
 | `IdempotencyRequests` | `(ExpiresUtc)` | Future cleanup job |
 
-The final migration and query plans will be verified before accepting additional indexes. Indexes are tenant-leading because all application queries are tenant-scoped.
+The committed migrations and model tests verify the index definitions. Production changes still require representative execution plans and Query Store evidence before adding or removing indexes. Indexes are tenant-leading because all application queries are tenant-scoped.
 
 ## 6. Query filters
 
-EF Core filters for activatable tenant entities use both predicates:
+EF Core 10 applies independent named filters to activatable tenant entities:
 
 ```csharp
-entity => entity.TenantId == tenantContext.TenantId && entity.IsActive
+builder
+    .HasQueryFilter("TenantFilter", entity => entity.TenantId == currentTenantId)
+    .HasQueryFilter("ActiveFilter", entity => entity.IsActive);
 ```
 
-For entities without activation state, only the tenant predicate applies. `IgnoreQueryFilters` is prohibited in normal request handlers and isolated to explicit administrative or integration-test code.
+`ITenantScoped` and `IActivatable` marker interfaces allow the DbContext to register these filters automatically for all matching model entities. For entities without activation state, only `TenantFilter` applies. A controlled audit query may disable `ActiveFilter` by name while retaining tenant isolation. Disabling all filters with parameterless `IgnoreQueryFilters()` is prohibited in normal application code.
+
+Before saving, the DbContext also validates every added, modified, or deleted tenant-owned entity against the current tenant. This write guard complements query filters and tenant-leading database keys; it does not replace them.
 
 ## 7. Retention and reactivation
 
@@ -333,16 +337,19 @@ For entities without activation state, only the tenant predicate applies. `Ignor
 - Temporal history is retained according to a documented production retention policy; the assessment does not add an automated cleanup job.
 - Idempotency records have an expiry column, but cleanup processing is a future enhancement.
 
-## 8. Migration artifacts planned for Phase 2
+## 8. Migration and database artifacts
 
 ```text
 database/
 ├── README.md
 ├── scripts/
 │   ├── V1.0.0__InitialSchema.sql
-│   └── V1.0.1__SeedReferenceData.sql
+│   ├── V1.0.1__UseIntegerAuditUserIds.sql
+│   └── V1.0.2__AddInvoiceQueryIndexes.sql
 ├── generated/
 │   └── InvoiceManagement_Idempotent.sql
+├── seed/
+│   └── SeedDemoData.sql
 ├── verification/
 │   ├── VerifySchema.sql
 │   ├── VerifyTemporalTables.sql
@@ -351,4 +358,4 @@ database/
     └── README.md
 ```
 
-Generated SQL must match the committed EF migration. Production rollback guidance favors restoring the previous application image and applying a tested forward-fix migration rather than automatically running destructive down scripts.
+Generated SQL must match the committed EF migrations. The idempotent demo seed covers every application table and is executed separately from `dotnet ef database update`. Production rollback guidance favors restoring the previous application image and applying a tested forward-fix migration rather than automatically running destructive down scripts.

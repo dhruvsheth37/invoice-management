@@ -1,6 +1,8 @@
+using InvoiceManagement.Domain.Common;
+
 namespace InvoiceManagement.Domain.Platform;
 
-public sealed class IdempotencyRequest
+public sealed class IdempotencyRequest : ITenantScoped
 {
     private IdempotencyRequest()
     {

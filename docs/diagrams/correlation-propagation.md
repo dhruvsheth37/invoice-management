@@ -16,6 +16,8 @@ sequenceDiagram
     Activity-->>API: TraceId and SpanId
     API->>Logs: Begin scope with trace, correlation,<br/>tenant, user, and resource IDs
     API->>DB: Execute tenant-scoped operation
+    DB-->>API: Result and command duration
+    API->>Logs: Development EF command event<br/>SQL, duration, masked parameters
     API->>DB: Persist correlation on status/idempotency audit
     API-->>Client: Response with X-Correlation-ID
     API-.->Future: Future propagation of traceparent,<br/>correlation, tenant, event, and causation metadata

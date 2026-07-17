@@ -50,7 +50,7 @@ Content-Type: application/json
   "customerId": "00000000-0000-0000-0000-000000000001",
   "customerLocationId": "00000000-0000-0000-0000-000000000002",
   "currencyCode": "USD",
-  "dueDate": "2026-08-15",
+  "dueDate": "2026-08-16",
   "notes": "Net 30",
   "lineItems": [
     {

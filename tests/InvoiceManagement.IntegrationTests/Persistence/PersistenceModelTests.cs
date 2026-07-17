@@ -1,6 +1,7 @@
 using InvoiceManagement.Application.Abstractions.Tenancy;
 using InvoiceManagement.Domain.Customers;
 using InvoiceManagement.Domain.Invoices;
+using InvoiceManagement.Domain.Platform;
 using InvoiceManagement.Domain.Tenants;
 using InvoiceManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,61 @@ namespace InvoiceManagement.IntegrationTests.Persistence;
 
 public sealed class PersistenceModelTests
 {
+    [Theory]
+    [InlineData(typeof(Tenant))]
+    [InlineData(typeof(Customer))]
+    [InlineData(typeof(CustomerLocation))]
+    [InlineData(typeof(Invoice))]
+    [InlineData(typeof(InvoiceLineItem))]
+    [InlineData(typeof(InvoiceStatusHistory))]
+    [InlineData(typeof(InvoiceNumberSequence))]
+    [InlineData(typeof(IdempotencyRequest))]
+    public void Tenant_owned_entities_have_a_global_tenant_query_filter(Type entityType)
+    {
+        using var context = CreateContext();
+        var entity = context.Model.FindEntityType(entityType)!;
+
+        Assert.NotNull(entity);
+        var queryFilters = entity.GetDeclaredQueryFilters();
+        var queryFilter = Assert.Single(queryFilters, filter => filter.Key == "TenantFilter");
+        Assert.Contains("CurrentTenantId", queryFilter.Expression!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(typeof(Customer))]
+    [InlineData(typeof(CustomerLocation))]
+    [InlineData(typeof(Invoice))]
+    [InlineData(typeof(InvoiceLineItem))]
+    public void Activatable_entities_have_an_independent_active_query_filter(Type entityType)
+    {
+        using var context = CreateContext();
+        var entity = context.Model.FindEntityType(entityType)!;
+
+        Assert.Contains(entity.GetDeclaredQueryFilters(), filter => filter.Key == "TenantFilter");
+        Assert.Contains(entity.GetDeclaredQueryFilters(), filter => filter.Key == "ActiveFilter");
+    }
+
+    [Fact]
+    public async Task Tenant_write_guard_rejects_an_entity_from_another_tenant_before_sql_execution()
+    {
+        await using var context = CreateContext();
+        var otherTenantCustomer = Customer.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            "OTHER",
+            "Other tenant customer",
+            null,
+            null,
+            DateTime.UtcNow,
+            1);
+        context.Customers.Add(otherTenantCustomer);
+
+        var exception = await Assert.ThrowsAsync<TenantIsolationException>(
+            () => context.SaveChangesAsync());
+
+        Assert.Contains("outside the current tenant scope", exception.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Invoice_and_line_item_are_temporal_and_activatable()
     {
