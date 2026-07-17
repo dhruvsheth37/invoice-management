@@ -1,6 +1,6 @@
 # ADR-006: Separate tracing, correlation, and idempotency
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-16
 
 ## Context

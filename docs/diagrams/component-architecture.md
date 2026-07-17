@@ -3,50 +3,49 @@
 ```mermaid
 flowchart LR
     subgraph API["InvoiceManagement.Api"]
-        Endpoints["Controllers/endpoints"]
-        Middleware["Tenant, correlation,<br/>errors, security"]
-        OpenApi["OpenAPI and health"]
+        Controllers["Thin controllers"]
+        Pipeline["Authentication, correlation,<br/>tenant, logging, limits, errors"]
+        Operations["OpenAPI and health checks"]
     end
 
     subgraph Application["InvoiceManagement.Application"]
-        CustomersApp["Customer queries"]
-        InvoiceCommands["Invoice commands"]
-        InvoiceQueries["Invoice queries"]
-        Dashboard["Dashboard queries"]
-        Validation["Validation and DTO mapping"]
-        Ports["Persistence, identity, time ports"]
+        Contracts["IInvoiceService and request contracts"]
+        DTOs["Response DTOs and mapping extensions"]
+        Abstractions["Persistence and tenant abstractions"]
     end
 
     subgraph Domain["InvoiceManagement.Domain"]
-        CustomerDomain["Customer model"]
+        CustomerDomain["Customer and location model"]
         InvoiceAggregate["Invoice aggregate and lifecycle"]
-        MoneyRules["Totals and rounding rules"]
-        DomainErrors["Domain errors"]
+        Rules["Totals, rounding and invariants"]
+        Markers["ITenantScoped and IActivatable"]
     end
 
     subgraph Infrastructure["InvoiceManagement.Infrastructure"]
-        DbContext["EF Core DbContext"]
-        Config["Entity configurations,<br/>filters, temporal mapping"]
-        Idempotency["SQL idempotency store"]
-        Migrations["EF migrations"]
+        Service["InvoiceService implementation"]
+        Allocator["Atomic invoice-number allocator"]
+        DbContext["Pooled EF Core DbContext"]
+        Protection["TenantFilter, ActiveFilter,<br/>tenant write guard"]
+        Persistence["Entity mappings, temporal tables,<br/>idempotency and migrations"]
+        Sql[("SQL Server")]
     end
 
-    Endpoints --> InvoiceCommands
-    Endpoints --> InvoiceQueries
-    Endpoints --> Dashboard
-    Middleware --> Endpoints
-    OpenApi --> Endpoints
-    InvoiceCommands --> InvoiceAggregate
-    InvoiceCommands --> Validation
-    InvoiceQueries --> Ports
-    Dashboard --> Ports
-    CustomersApp --> CustomerDomain
-    InvoiceAggregate --> MoneyRules
-    InvoiceAggregate --> DomainErrors
-    Infrastructure --> Ports
-    DbContext --> Config
-    DbContext --> Idempotency
-    Config --> Migrations
+    Pipeline --> Controllers
+    Operations --> Controllers
+    Controllers --> Contracts
+    Controllers --> DTOs
+    Service -.->|"implements"| Contracts
+    Service --> Abstractions
+    Service --> CustomerDomain
+    Service --> InvoiceAggregate
+    InvoiceAggregate --> Rules
+    DbContext --> Markers
+    Service --> DbContext
+    Service --> Allocator
+    DbContext --> Protection
+    DbContext --> Persistence
+    Allocator --> Sql
+    Persistence --> Sql
 ```
 
-Logical module boundaries are kept inside four projects to avoid assessment-time project proliferation.
+Logical module boundaries are kept inside four projects to avoid assessment-time project proliferation. Architecture tests enforce inward references and prevent Domain entities or Infrastructure implementation types from entering controller contracts.

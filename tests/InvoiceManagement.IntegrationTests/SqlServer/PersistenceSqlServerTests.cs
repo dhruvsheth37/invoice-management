@@ -1,5 +1,7 @@
 using InvoiceManagement.Domain.Invoices;
+using InvoiceManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace InvoiceManagement.IntegrationTests.SqlServer;
 
@@ -7,6 +9,36 @@ namespace InvoiceManagement.IntegrationTests.SqlServer;
 public sealed class PersistenceSqlServerTests(SqlServerFixture fixture)
 {
     private static readonly DateTime Now = new(2026, 7, 16, 12, 0, 0, DateTimeKind.Utc);
+
+    [SqlServerFact]
+    public async Task Pooled_context_is_reinitialized_without_leaking_the_previous_tenant()
+    {
+        var firstTenant = await fixture.SeedTenantAsync("pool-a");
+        var secondTenant = await fixture.SeedTenantAsync("pool-b");
+        var invoice = CreateDraft(firstTenant);
+        await using (var setup = fixture.CreateContext(firstTenant.TenantId))
+        {
+            setup.Invoices.Add(invoice);
+            await setup.SaveChangesAsync();
+        }
+
+        var options = new DbContextOptionsBuilder<InvoiceDbContext>()
+            .UseSqlServer(fixture.ConnectionString)
+            .Options;
+        var factory = new PooledDbContextFactory<InvoiceDbContext>(options, poolSize: 1);
+
+        await using (var firstLease = factory.CreateDbContext())
+        {
+            firstLease.SetTenant(firstTenant.TenantId);
+            Assert.True(await firstLease.Invoices.AnyAsync(item => item.Id == invoice.Id));
+        }
+
+        await using (var secondLease = factory.CreateDbContext())
+        {
+            secondLease.SetTenant(secondTenant.TenantId);
+            Assert.False(await secondLease.Invoices.AnyAsync(item => item.Id == invoice.Id));
+        }
+    }
 
     [SqlServerFact]
     public async Task Query_filters_isolate_tenants_and_hide_inactive_drafts()
@@ -34,7 +66,14 @@ public sealed class PersistenceSqlServerTests(SqlServerFixture fixture)
 
         await using var verificationContext = fixture.CreateContext(firstTenant.TenantId);
         Assert.False(await verificationContext.Invoices.AnyAsync(item => item.Id == invoice.Id));
-        Assert.True(await verificationContext.Invoices.IgnoreQueryFilters().AnyAsync(item => item.Id == invoice.Id && !item.IsActive));
+        Assert.True(await verificationContext.Invoices
+            .IgnoreQueryFilters(["ActiveFilter"])
+            .AnyAsync(item => item.Id == invoice.Id && !item.IsActive));
+
+        await using var otherTenantContext = fixture.CreateContext(secondTenant.TenantId);
+        Assert.False(await otherTenantContext.Invoices
+            .IgnoreQueryFilters(["ActiveFilter"])
+            .AnyAsync(item => item.Id == invoice.Id));
     }
 
     [SqlServerFact]
@@ -63,7 +102,7 @@ public sealed class PersistenceSqlServerTests(SqlServerFixture fixture)
             .SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM [history].[InvoicesHistory] WHERE [Id] = {invoice.Id}")
             .SingleAsync();
         Assert.True(historyCount >= 1);
-        var persisted = await verification.Invoices.IgnoreQueryFilters().SingleAsync(item => item.Id == invoice.Id);
+        var persisted = await verification.Invoices.SingleAsync(item => item.Id == invoice.Id);
         Assert.Equal("first writer", persisted.VoidReason);
         Assert.Equal(31, persisted.ModifiedBy);
     }

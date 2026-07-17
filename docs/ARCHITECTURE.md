@@ -26,7 +26,7 @@ The implementation is intentionally a modular monolith. It preserves explicit bo
 - Retrieve invoice details.
 - Issue, mark paid, and void an invoice through business operations.
 - Retrieve an invoice summary/dashboard.
-- Manage customer and customer-location references needed by invoices.
+- Validate and use tenant-owned customer and customer-location references needed by invoices.
 - Enforce tenant isolation in request handling, EF Core, and SQL Server relationships.
 - Apply optimistic concurrency, idempotency, structured logging, and standardized errors.
 - Keep temporal history for invoices and invoice line items.
@@ -42,6 +42,7 @@ The implementation is intentionally a modular monolith. It preserves explicit bo
 - Temporal tables for every transactional entity.
 - SQL triggers.
 - Expansion into approximately ten projects.
+- A generic repository or Specification framework over EF Core. Focused business specifications may be introduced later when predicates require reuse across multiple query workflows.
 
 These are documented as future enhancements rather than partially implemented abstractions.
 
@@ -74,9 +75,9 @@ docs/
 | Project | Responsibility |
 |---|---|
 | `Api` | HTTP endpoints, middleware, authentication boundary, OpenAPI, composition root |
-| `Application` | Use cases, DTOs, validation, ports, transaction orchestration |
+| `Application` | Use-case contracts, DTOs, mapping extensions, and persistence/tenancy abstractions |
 | `Domain` | Entities, value rules, lifecycle transitions, domain errors |
-| `Infrastructure` | EF Core, SQL Server mappings, tenant query filters, migrations, external implementations |
+| `Infrastructure` | Invoice use-case implementation, EF Core, SQL Server mappings, named tenant/activation filters, write guard, migrations |
 | `UnitTests` | Domain and application behavior |
 | `ArchitectureTests` | Layer references, controller boundaries, and API contract conventions |
 | `IntegrationTests` | API, SQL Server, tenant isolation, concurrency, and temporal history |
@@ -88,7 +89,7 @@ Api -> Application -> Domain
 Api -> Infrastructure -> Application + Domain
 ```
 
-No generic repository is planned. Application handlers use a narrow persistence abstraction implemented by the EF Core context, or the context directly where that keeps the code clearer.
+No generic repository is planned. The Infrastructure use-case implementation uses the narrow Application persistence abstraction and the EF Core context where direct query composition keeps behavior clearer.
 
 Controllers are HTTP adapters only. Their public signatures and injected collaborators use Application contracts or framework primitives; Domain entities and Infrastructure implementations cannot cross the controller boundary. Architecture tests enforce this rule together with explicit HTTP method, response metadata, and cancellation contracts.
 
@@ -113,7 +114,7 @@ Draft --issue--> Issued --mark paid--> Paid
 
 Rules:
 
-- A draft can be edited before issue.
+- The domain permits financial changes only while Draft; the current API creates Drafts but does not expose a general edit endpoint.
 - Invoice number, issue date, and due date are finalized during issue.
 - Issued invoice financial fields and line items are immutable.
 - Issuance snapshots the customer and billing-location identity onto the invoice so later master-data edits or deactivation do not rewrite financial history.
@@ -130,11 +131,13 @@ Isolation is layered:
 
 1. Request layer resolves the tenant from a trusted JWT claim in production. `X-Tenant-Id` is allowed only in Development and integration tests.
 2. Application commands never accept an authoritative tenant identifier in the request body.
-3. EF Core global query filters apply both `TenantId` and `IsActive` predicates.
-4. Tenant-leading alternate keys and composite foreign keys prevent cross-tenant references in SQL Server.
-5. Integration tests attempt cross-tenant reads and writes.
+3. EF Core 10 named global query filters apply `TenantFilter` and, where supported, an independent `ActiveFilter`.
+4. Marker interfaces apply the required filters automatically to every tenant-owned and activatable entity registered in the model.
+5. The DbContext write guard rejects added, modified, or deleted entities whose tenant does not match the current scope.
+6. Tenant-leading alternate keys and composite foreign keys prevent cross-tenant references in SQL Server.
+7. Integration tests attempt cross-tenant reads and writes and verify that disabling `ActiveFilter` leaves `TenantFilter` enabled.
 
-Global query filters are defense in depth, not the sole security boundary. Administrative operations that bypass filters must be isolated and explicit.
+Global query filters are defense in depth, not the sole security boundary. Normal application code must never disable all query filters. Administrative queries may disable only a specifically named non-tenant filter and must remain isolated and explicit.
 
 ## 8. Record activation
 
@@ -194,6 +197,7 @@ Correlation IDs trace an execution. Idempotency keys prevent duplicate execution
 - The API accepts a validated `X-Correlation-ID` or creates one.
 - Both identifiers are returned to the caller and added to structured logging scope.
 - Logs include `TraceId`, `CorrelationId`, `TenantId`, `UserId`, and relevant `InvoiceId`.
+- Development logs executed EF Core commands, duration, and masked parameter placeholders through the structured JSON logger; non-Development environments keep EF Core at `Warning` by default.
 - `CorrelationId` is stored in status history and idempotency records where it adds audit value, not on every domain table.
 - Future HTTP calls and messages propagate W3C context and correlation metadata.
 
@@ -225,6 +229,14 @@ AKS is a future option only when workload or platform requirements justify its o
 
 - [C4 context](diagrams/c4-context.md)
 - [C4 container](diagrams/c4-container.md)
+- [Component architecture](diagrams/component-architecture.md)
+- [Tenant isolation](diagrams/tenant-isolation.md)
+- [Invoice search sequence](diagrams/invoice-search-sequence.md)
+- [Database ERD](diagrams/database-erd.md)
+- [Invoice lifecycle](diagrams/invoice-lifecycle.md)
+- [Create invoice sequence](diagrams/create-invoice-sequence.md)
+- [Issue invoice sequence](diagrams/issue-invoice-sequence.md)
+- [Correlation propagation](diagrams/correlation-propagation.md)
 - [Component architecture](diagrams/component-architecture.md)
 - [Database ERD](diagrams/database-erd.md)
 - [Invoice lifecycle](diagrams/invoice-lifecycle.md)

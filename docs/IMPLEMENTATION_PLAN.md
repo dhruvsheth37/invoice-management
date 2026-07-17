@@ -1,14 +1,16 @@
-# Implementation Plan
+# Implementation Record and Roadmap
+
+All seven assessment phases below are implemented. The original phase boundaries and commit intent are retained as a delivery record; the future-enhancement matrix remains the active roadmap.
 
 ## Delivery rules
 
-- Phase 1 is documentation only and requires approval before implementation.
-- Each later phase must build and test before it is pushed.
+- Phase 1 established and approved the design before implementation.
+- Each implementation phase was built and verified before handoff.
 - Each push is a focused commit with no unrelated work.
 - EF Core migrations remain the schema authority; SQL artifacts must be generated from or reconciled with them.
 - Features listed as future enhancements are documented, not stubbed.
 
-## Phase 1: architecture and database decision pack
+## Phase 1: architecture and database decision pack — Completed
 
 Deliverables:
 
@@ -24,11 +26,11 @@ Gate:
 
 Commit: `docs: define architecture API and database design`
 
-## Phase 2: solution foundation and database
+## Phase 2: solution foundation and database — Completed
 
 Deliverables:
 
-- Four source projects and two test projects.
+- Four source projects plus unit and integration test projects.
 - Domain model and EF Core mapping.
 - Tenant query filters and tenant-aware composite relationships.
 - `IsActive` filtering and Draft-only invoice deactivation constraints.
@@ -44,7 +46,7 @@ Verification:
 
 Commit: `feat: establish solution foundation and database schema`
 
-## Phase 3: core invoice API
+## Phase 3: core invoice API — Completed
 
 Deliverables:
 
@@ -62,7 +64,7 @@ Verification:
 
 Commit: `feat: implement tenant-scoped invoice workflows`
 
-## Phase 4: security, errors, and observability
+## Phase 4: security, errors, and observability — Completed
 
 Deliverables:
 
@@ -78,7 +80,7 @@ Verification:
 
 Commit: `feat: add tenant security error handling and observability`
 
-## Phase 5: automated verification
+## Phase 5: automated verification — Completed
 
 Deliverables:
 
@@ -93,18 +95,18 @@ Verification:
 
 Commit: `test: verify invoice rules tenant isolation and persistence`
 
-## Phase 6: submission and CI
+## Phase 6: submission documentation and local delivery — Completed
 
 Deliverables:
 
 - Complete `README.md`, `SOLUTION_NOTES.md`, and `AI_USAGE.md`.
-- GitHub Actions build/test workflow.
+- Repeatable solution build/test commands and local container workflows.
 - Azure, security, performance, limitations, and roadmap documentation.
 - Clean-clone run verification.
 
 Commit: `docs: finalize assessment documentation and CI`
 
-## Phase 7: architecture guardrails
+## Phase 7: architecture guardrails — Completed
 
 Deliverables:
 
@@ -136,15 +138,16 @@ Commit: `test: enforce architecture and API boundaries`
 | Hosting | Docker-ready, Azure-documented | AKS if operational requirements justify it |
 | Database enforcement | Constraints and composite FKs | SQL triggers for selected immutable rules if required |
 | Payments | External paid confirmation | Payment, allocation, reversal, and reconciliation module |
+| Query composition | Direct EF Core query handlers, global tenant filters, and DTO projections | Focused Specification objects when business predicates are reused across search, export, reporting, and background processing |
 
-## Phase 1 review checklist
+## Accepted design decisions
 
-- Is the four-project modular monolith accepted?
-- Are Customer and CustomerLocation required in the assessment implementation?
-- Are the Draft, Issued, Paid, and Void states accepted?
-- Are business-operation endpoints preferred over generic status patching?
-- Is the activation policy accepted, especially Draft-only invoice deactivation?
-- Are temporal tables limited to invoices and line items?
-- Are EF migrations accepted as the schema authority?
-- Is development-only `X-Tenant-Id` with production JWT claims accepted?
-- Is the payment domain correctly deferred?
+- Four-project modular monolith.
+- Customer and CustomerLocation references required for invoicing.
+- Draft, Issued, Paid, and Void lifecycle states.
+- Business-operation endpoints instead of a generic status patch.
+- Single `IsActive` policy with Draft-only invoice deactivation.
+- Temporal history limited to invoices and line items.
+- EF migrations as schema authority.
+- Development-only tenant header with production JWT tenant claims.
+- Payment allocation and reconciliation deferred.

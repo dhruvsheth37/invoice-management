@@ -1,6 +1,6 @@
 namespace InvoiceManagement.Domain.Common;
 
-public abstract class ActivatableTenantEntity : TenantEntity
+public abstract class ActivatableTenantEntity : TenantEntity, IActivatable
 {
     protected ActivatableTenantEntity()
     {

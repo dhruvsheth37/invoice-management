@@ -188,13 +188,15 @@ The application uses shared-database, shared-schema multi-tenancy with defence i
 - production JWTs must contain a valid `tenant_id` claim;
 - Development can use `X-Tenant-Id`, but that header path is not enabled as production authentication;
 - tenant middleware resolves one immutable request tenant context;
-- EF Core global query filters apply `TenantId` and `IsActive` to tenant-owned reads;
+- EF Core 10 independently named `TenantFilter` and `ActiveFilter` filters apply tenant and activation scope to reads;
+- tenant and activation marker interfaces automatically cover matching entities registered in the EF model;
 - all service lookups and writes carry the tenant identifier;
+- a DbContext write guard rejects tracked writes outside the current tenant scope;
 - tenant-leading keys and composite foreign keys reject cross-tenant relationships at the database layer;
 - idempotency and invoice-number sequences are tenant-scoped;
 - logs and status-history records preserve correlation and actor context.
 
-Pooled EF contexts do not retain tenant state between requests; the tenant is supplied through request-scoped context. Integration tests exercise tenant isolation and cross-tenant access attempts.
+Every scoped lease from the pooled context factory is initialized from the request-scoped tenant context before use. Normal application code never disables all query filters; a controlled inactive-record query can disable `ActiveFilter` by name while preserving `TenantFilter`. Integration tests exercise tenant isolation, cross-tenant write rejection, and selective filter behavior.
 
 ## 9. Indexing and performance strategy
 
@@ -293,5 +295,6 @@ In priority order, I would:
 10. Add infrastructure-as-code, managed identities, Key Vault integration, backup/restore testing, temporal-retention policy, and zero-downtime migration practices.
 11. Add an outbox and asynchronous integration events when real downstream consumers exist; this would also provide a reliable source for CQRS read-model projections and ETL processes.
 12. Profile realistic production-scale data and tune indexes, query plans, pool sizes, rate-limit thresholds, replica routing, and archival policies from measurements.
+13. Introduce focused Specification objects when the same business predicates are reused across API search, exports, dashboard drill-downs, scheduled reports, and background jobs. Keep tenant isolation in EF global filters and retain direct DTO projection, ordering, and cursor pagination in query handlers; avoid a generic repository/specification abstraction that merely wraps `IQueryable` and EF Core.
 
 Redis, Azure Service Bus, Azure Functions, AKS, read replicas, temporal tables on every table, SQL triggers, and splitting the solution into ten separate projects are future enhancements only. Each should be introduced in response to measured scale, reliability, integration, or team-ownership needs rather than by default.

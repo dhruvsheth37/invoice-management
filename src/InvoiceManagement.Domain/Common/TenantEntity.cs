@@ -1,6 +1,6 @@
 namespace InvoiceManagement.Domain.Common;
 
-public abstract class TenantEntity : AuditableEntity
+public abstract class TenantEntity : AuditableEntity, ITenantScoped
 {
     protected TenantEntity()
     {

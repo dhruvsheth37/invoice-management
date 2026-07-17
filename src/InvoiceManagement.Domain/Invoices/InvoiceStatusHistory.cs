@@ -1,6 +1,8 @@
+using InvoiceManagement.Domain.Common;
+
 namespace InvoiceManagement.Domain.Invoices;
 
-public sealed class InvoiceStatusHistory
+public sealed class InvoiceStatusHistory : ITenantScoped
 {
     private InvoiceStatusHistory()
     {

@@ -1,6 +1,6 @@
 # ADR-004: Use temporal tables selectively
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-16
 
 ## Context

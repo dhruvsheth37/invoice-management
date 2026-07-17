@@ -12,7 +12,8 @@ stateDiagram-v2
     Void --> [*]
 
     note right of Draft
-      Financial fields and lines are editable.
+      Domain changes are allowed only in Draft.
+      No general edit endpoint is currently exposed.
       IsActive may only be cleared while Draft.
     end note
 
