@@ -4,7 +4,7 @@ Production-minded, multi-tenant invoice management API designed for the Qwiik te
 
 ## Current status
 
-Phase 5 adds automated verification for invoice calculations, lifecycle rules, validation, numbering, HTTP behavior, tenant isolation, idempotency, temporal history, and optimistic concurrency.
+Phase 7 adds executable architecture boundaries for inward dependencies, thin API controllers, Application-only HTTP contracts, and explicit API action metadata.
 
 ## Foundation verification
 

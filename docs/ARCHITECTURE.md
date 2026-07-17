@@ -56,6 +56,7 @@ src/
 
 tests/
 ├── InvoiceManagement.UnitTests
+├── InvoiceManagement.ArchitectureTests
 └── InvoiceManagement.IntegrationTests
 
 database/
@@ -77,6 +78,7 @@ docs/
 | `Domain` | Entities, value rules, lifecycle transitions, domain errors |
 | `Infrastructure` | EF Core, SQL Server mappings, tenant query filters, migrations, external implementations |
 | `UnitTests` | Domain and application behavior |
+| `ArchitectureTests` | Layer references, controller boundaries, and API contract conventions |
 | `IntegrationTests` | API, SQL Server, tenant isolation, concurrency, and temporal history |
 
 Dependencies point inward:
@@ -87,6 +89,8 @@ Api -> Infrastructure -> Application + Domain
 ```
 
 No generic repository is planned. Application handlers use a narrow persistence abstraction implemented by the EF Core context, or the context directly where that keeps the code clearer.
+
+Controllers are HTTP adapters only. Their public signatures and injected collaborators use Application contracts or framework primitives; Domain entities and Infrastructure implementations cannot cross the controller boundary. Architecture tests enforce this rule together with explicit HTTP method, response metadata, and cancellation contracts.
 
 ## 5. Module boundaries
 

@@ -104,6 +104,23 @@ Deliverables:
 
 Commit: `docs: finalize assessment documentation and CI`
 
+## Phase 7: architecture guardrails
+
+Deliverables:
+
+- Dedicated architecture-test project included in the solution test command.
+- Exact inward project-reference and assembly-dependency checks.
+- Controller boundary checks preventing Domain entities and Infrastructure types from entering HTTP contracts.
+- API convention checks for routes, HTTP methods, response metadata, cancellation, and interface-based Application dependencies.
+
+Verification:
+
+- Architecture tests run without SQL Server or container infrastructure.
+- Existing controllers pass the enforced boundaries and API conventions.
+- `dotnet build` and the architecture test project succeed with zero warnings.
+
+Commit: `test: enforce architecture and API boundaries`
+
 ## Implementation versus future enhancements
 
 | Capability | Assessment implementation | Future enhancement |

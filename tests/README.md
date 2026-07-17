@@ -1,8 +1,9 @@
 # Automated Verification
 
-The solution has two complementary test tiers:
+The solution has three complementary test tiers:
 
 - Unit and boundary tests run without infrastructure and cover calculations, rounding, lifecycle rules, validation, correlation, tenant resolution, and EF model contracts.
+- Architecture tests enforce exact project references, inward-only assembly dependencies, framework-independent Domain/Application layers, and controller boundaries that expose Application contracts rather than Domain entities or Infrastructure types.
 - SQL Server integration tests create a uniquely named database, apply all EF Core migrations, exercise the API in-process, and then drop the database. They cover HTTP workflows, idempotency, tenant isolation, active-row filtering, numbering, temporal history, and row-version concurrency.
 
 ## Fast verification
@@ -11,6 +12,12 @@ The solution has two complementary test tiers:
 dotnet restore InvoiceManagement.sln
 dotnet build InvoiceManagement.sln --no-restore
 dotnet test InvoiceManagement.sln --no-build --no-restore
+```
+
+Run only the fast architecture guardrails with:
+
+```bash
+dotnet test tests/InvoiceManagement.ArchitectureTests/InvoiceManagement.ArchitectureTests.csproj
 ```
 
 ## SQL Server verification

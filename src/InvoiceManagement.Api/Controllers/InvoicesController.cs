@@ -36,14 +36,17 @@ public sealed class InvoicesController(IInvoiceService service) : ControllerBase
     }
 
     [HttpPost("{invoiceId:guid}/issue")]
+    [ProducesResponseType<InvoiceDto>(StatusCodes.Status200OK)]
     public Task<ActionResult<InvoiceDto>> Issue(Guid invoiceId, IssueInvoiceRequest? request, CancellationToken cancellationToken) =>
         Mutate(() => service.IssueAsync(invoiceId, request ?? new(null, null), OperationContext(true), cancellationToken));
 
     [HttpPost("{invoiceId:guid}/mark-paid")]
+    [ProducesResponseType<InvoiceDto>(StatusCodes.Status200OK)]
     public Task<ActionResult<InvoiceDto>> MarkPaid(Guid invoiceId, MarkInvoicePaidRequest request, CancellationToken cancellationToken) =>
         Mutate(() => service.MarkPaidAsync(invoiceId, request, OperationContext(true), cancellationToken));
 
     [HttpPost("{invoiceId:guid}/void")]
+    [ProducesResponseType<InvoiceDto>(StatusCodes.Status200OK)]
     public Task<ActionResult<InvoiceDto>> Void(Guid invoiceId, VoidInvoiceRequest request, CancellationToken cancellationToken) =>
         Mutate(() => service.VoidAsync(invoiceId, request, OperationContext(true), cancellationToken));
 
