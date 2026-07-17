@@ -4,7 +4,7 @@ Production-minded, multi-tenant invoice management API designed for the Qwiik te
 
 ## Current status
 
-Phase 5 adds automated verification for invoice calculations, lifecycle rules, validation, numbering, HTTP behavior, tenant isolation, idempotency, temporal history, and optimistic concurrency.
+Phase 7 adds executable architecture boundaries for inward dependencies, thin API controllers, Application-only HTTP contracts, and explicit API action metadata.
 
 ## Foundation verification
 
@@ -16,6 +16,7 @@ dotnet test InvoiceManagement.sln --no-build --no-restore
 ```
 
 For complete local startup, demo data, and endpoint examples, see [Execute.md](Execute.md).
+For the assessment handoff, see [Solution notes](SOLUTION_NOTES.md) and [AI usage](AI_USAGE.md).
 For database deployment details, see [database/README.md](database/README.md).
 For the test tiers and SQL Server integration setup, see [tests/README.md](tests/README.md).
 
