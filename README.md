@@ -16,6 +16,7 @@ dotnet test InvoiceManagement.sln --no-build --no-restore
 ```
 
 For complete local startup, demo data, and endpoint examples, see [Execute.md](Execute.md).
+For the assessment handoff, see [Solution notes](SOLUTION_NOTES.md) and [AI usage](AI_USAGE.md).
 For database deployment details, see [database/README.md](database/README.md).
 For the test tiers and SQL Server integration setup, see [tests/README.md](tests/README.md).
 
